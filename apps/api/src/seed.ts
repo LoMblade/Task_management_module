@@ -9,11 +9,11 @@ import { randomUUID } from 'node:crypto';
 import { CongViec, NhanVien, DuAn } from '@erp/contracts';
 
 export async function seedDb(
-  congViecRepo: MemoryCongViecRepository,
-  lichSuRepo: MemoryLichSuRepository,
-  viecConRepo: MemoryViecConRepository,
-  binhLuanRepo: MemoryBinhLuanRepository,
-  danhMucRepo: MemoryDanhMucRepository
+  congViecRepo: any,
+  lichSuRepo: any,
+  viecConRepo: any,
+  binhLuanRepo: any,
+  danhMucRepo: any
 ) {
   const congTyId = 'ct-long-do';
 

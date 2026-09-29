@@ -45,7 +45,7 @@ export default async function (fastify: FastifyInstance, opts: { service: CongVi
     const { username, password } = loginSchema.parse(request.body);
     // Hardcoded demo logic for initial login (or use db if seeded)
     const users = await danhMucRepo.listNhanVien('ct-long-do');
-    const user = users.find(u => u.id === username);
+    const user = users.find((u: any) => u.id === username);
     if (!user) throw new DomainError('UNAUTHORIZED', 'Tài khoản không tồn tại', 401);
     
     // Check password (fallback for seeded demo users that don't have passwords yet)
@@ -68,7 +68,7 @@ export default async function (fastify: FastifyInstance, opts: { service: CongVi
   fastify.get('/api/nhan-vien', async (request) => {
     const ctx = parseAuth(request);
     const users = await danhMucRepo.listNhanVien(ctx.congTyId);
-    return { data: users.map(u => { const { matKhau, ...safe } = u; return safe; }) };
+    return { data: users.map((u: any) => { const { matKhau, ...safe } = u; return safe; }) };
   });
 
   fastify.post('/api/nhan-vien', async (request, reply) => {

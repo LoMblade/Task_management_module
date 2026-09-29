@@ -57,8 +57,8 @@ export class MongoCongViecRepository implements CongViecRepository {
     if (filter.duAnId === 'viec-chung') query.duAnId = { $exists: false };
     else if (filter.duAnId) query.duAnId = filter.duAnId;
 
-    if (filter.trangThai) query.trangThai = filter.trangThai;
-    if (filter.uuTien) query.uuTien = filter.uuTien;
+    if (filter.trangThai) query.trangThai = filter.trangThai as any;
+    if (filter.uuTien) query.uuTien = filter.uuTien as any;
     
     if (filter.quaHan) {
       query.trangThai = { $ne: 'HOAN_THANH' };
