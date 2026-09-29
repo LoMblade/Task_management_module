@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCongViecList, useNhanVien } from '../hooks';
+import { useCongViecList, useNhanVien, useDuAn } from '../hooks';
 import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
 
@@ -10,21 +10,39 @@ export function TrangChuPage() {
   
   const { data: response, isLoading, error, refetch } = useCongViecList(searchParams);
   const { data: nhanVienResponse } = useNhanVien();
+  const { data: duAnResponse } = useDuAn();
   
   if (isLoading) return <LoadingState />;
   if (error) return <ErrorState error={error as Error} onRetry={refetch} />;
   
   const tasks = response?.data || [];
   const nhanViens = nhanVienResponse?.data || [];
+  const duAns = duAnResponse?.data || [];
+
+  // Tổng hợp KPI
+  const totalTasks = tasks.length;
+  const inProgressTasks = tasks.filter(t => t.trangThai === 'DANG_LAM').length;
+  const pendingTasks = tasks.filter(t => t.trangThai === 'CHO_DUYET').length;
+  const completedTasks = tasks.filter(t => t.trangThai === 'HOAN_THANH').length;
+  const overdueTasks = tasks.filter(t => t.hetHan && new Date(t.hetHan) < new Date() && t.trangThai !== 'HOAN_THANH').length;
 
   // Tính thống kê theo người thực hiện
-  const statsByAssignee: Record<string, { id: string, name: string, chuaBatDau: number, dangLam: number, hoanThanh: number, tong: number, quaHan: number }> = {};
+  const statsByAssignee: Record<string, { id: string, name: string, chucVu: string, chuaBatDau: number, dangLam: number, hoanThanh: number, tong: number, quaHan: number }> = {};
   
   tasks.forEach(t => {
     (t.nguoiThucHienIds || []).forEach((userId: string) => {
       if (!statsByAssignee[userId]) {
         const user = nhanViens.find((u: any) => u.id === userId);
-        statsByAssignee[userId] = { id: userId, name: user?.ten || userId, chuaBatDau: 0, dangLam: 0, hoanThanh: 0, tong: 0, quaHan: 0 };
+        statsByAssignee[userId] = { 
+          id: userId, 
+          name: user?.ten || userId, 
+          chucVu: user?.chucVu || 'Nhân sự',
+          chuaBatDau: 0, 
+          dangLam: 0, 
+          hoanThanh: 0, 
+          tong: 0, 
+          quaHan: 0 
+        };
       }
       
       statsByAssignee[userId].tong++;
@@ -42,67 +60,215 @@ export function TrangChuPage() {
 
   return (
     <div>
-      <h2 style={{ marginBottom: '1.5rem', color: '#17211b' }}>Dashboard <span style={{ fontSize: '1rem', color: '#666', fontWeight: 'normal' }}>Thao tác nghiệp vụ</span></h2>
+      {/* Header Page */}
+      <div style={{ marginBottom: '1.75rem' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.35rem' }}>
+          Tổng quan Tiến độ & Hiệu suất Dự án
+        </h2>
+        <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0 }}>
+          Báo cáo thống kê thời gian thực từ hiện trường thi công và các ban điều hành gói thầu
+        </p>
+      </div>
       
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-        {/* Table 1: Hoạt động chung */}
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ backgroundColor: '#0056b3', color: 'white', padding: '10px 15px', fontWeight: 'bold' }}>
-            Hoạt động chung
+      {/* KPI Cards Strip */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: '1.25rem',
+        marginBottom: '2rem'
+      }}>
+        <div className="stat-card">
+          <div className="stat-icon" style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}>
+            📋
           </div>
-          <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f4f6f8' }}>
-                <th style={{ padding: '10px', textAlign: 'left' }}>Người nhận xử lý</th>
-                <th style={{ padding: '10px', textAlign: 'center' }}>Chưa bắt đầu</th>
-                <th style={{ padding: '10px', textAlign: 'center' }}>Đang xử lý</th>
-                <th style={{ padding: '10px', textAlign: 'center' }}>Hoàn thành</th>
-                <th style={{ padding: '10px', textAlign: 'center' }}>Tổng</th>
-              </tr>
-            </thead>
-            <tbody>
-              {statsList.length === 0 && (
-                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '20px' }}>Không có dữ liệu</td></tr>
-              )}
-              {statsList.map((stat, idx) => (
-                <tr key={stat.id} style={{ backgroundColor: idx % 2 === 0 ? 'white' : '#fafafa', borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '10px', color: '#0056b3' }}>{stat.name}</td>
-                  <td style={{ padding: '10px', textAlign: 'center' }}>{stat.chuaBatDau}</td>
-                  <td style={{ padding: '10px', textAlign: 'center' }}>{stat.dangLam}</td>
-                  <td style={{ padding: '10px', textAlign: 'center' }}>{stat.hoanThanh}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>{stat.tong}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div>
+            <div style={{ fontSize: '0.775rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Tổng công việc
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#0f172a' }}>
+              {totalTasks}
+            </div>
+            <div style={{ fontSize: '0.725rem', color: '#059669', marginTop: '0.2rem' }}>
+              Trên {duAns.length} gói thầu dự án
+            </div>
+          </div>
         </div>
 
-        {/* Table 2: Tác vụ quá hạn */}
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ backgroundColor: '#0056b3', color: 'white', padding: '10px 15px', fontWeight: 'bold' }}>
-            Tác vụ quá hạn
+        <div className="stat-card">
+          <div className="stat-icon" style={{ backgroundColor: '#ecfdf5', color: '#059669' }}>
+            ⚡
           </div>
-          <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f4f6f8' }}>
-                <th style={{ padding: '10px', textAlign: 'left' }}>Người nhận xử lý</th>
-                <th style={{ padding: '10px', textAlign: 'center' }}>Số tác vụ quá hạn</th>
-              </tr>
-            </thead>
-            <tbody>
-              {statsList.filter(s => s.quaHan > 0).length === 0 && (
-                <tr><td colSpan={2} style={{ textAlign: 'center', padding: '20px' }}>Không có dữ liệu</td></tr>
-              )}
-              {statsList.filter(s => s.quaHan > 0).map((stat, idx) => (
-                <tr key={stat.id} style={{ backgroundColor: idx % 2 === 0 ? 'white' : '#fafafa', borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '10px', color: '#0056b3' }}>{stat.name}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', color: '#c62828', fontWeight: 'bold' }}>{stat.quaHan}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div>
+            <div style={{ fontSize: '0.775rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Đang thi công
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#059669' }}>
+              {inProgressTasks}
+            </div>
+            <div style={{ fontSize: '0.725rem', color: '#64748b', marginTop: '0.2rem' }}>
+              Chiếm {totalTasks > 0 ? Math.round((inProgressTasks / totalTasks) * 100) : 0}% khối lượng
+            </div>
+          </div>
         </div>
 
+        <div className="stat-card">
+          <div className="stat-icon" style={{ backgroundColor: '#fffbeb', color: '#d97706' }}>
+            ⏳
+          </div>
+          <div>
+            <div style={{ fontSize: '0.775rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Chờ nghiệm thu
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#d97706' }}>
+              {pendingTasks}
+            </div>
+            <div style={{ fontSize: '0.725rem', color: '#64748b', marginTop: '0.2rem' }}>
+              Cần lãnh đạo phê duyệt
+            </div>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon" style={{ backgroundColor: '#fef2f2', color: '#dc2626' }}>
+            ⚠️
+          </div>
+          <div>
+            <div style={{ fontSize: '0.775rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Tác vụ trễ hạn
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#dc2626' }}>
+              {overdueTasks}
+            </div>
+            <div style={{ fontSize: '0.725rem', color: '#dc2626', marginTop: '0.2rem' }}>
+              Cần đôn đốc hiện trường
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Grid: Hai bảng điều hành */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '1.5rem' }}>
+        {/* Table 1: Phân bổ khối lượng theo nhân sự */}
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{
+            padding: '1rem 1.25rem',
+            borderBottom: '1px solid #e2e8f0',
+            backgroundColor: '#ffffff',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#0f172a' }}>
+                Phân bổ khối lượng theo nhân sự
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                Tiến độ giải quyết công việc của từng cá nhân phụ trách
+              </div>
+            </div>
+            <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: '600' }}>
+              {statsList.length} nhân sự
+            </span>
+          </div>
+
+          <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Cán bộ phụ trách</th>
+                  <th style={{ textAlign: 'center' }}>Chưa làm</th>
+                  <th style={{ textAlign: 'center' }}>Đang làm</th>
+                  <th style={{ textAlign: 'center' }}>Hoàn thành</th>
+                  <th style={{ textAlign: 'center' }}>Tổng việc</th>
+                </tr>
+              </thead>
+              <tbody>
+                {statsList.length === 0 && (
+                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>Chưa có dữ liệu phân công</td></tr>
+                )}
+                {statsList.map((stat) => (
+                  <tr key={stat.id}>
+                    <td>
+                      <div style={{ fontWeight: '600', color: '#1e3a8a' }}>{stat.name}</div>
+                      <div style={{ fontSize: '0.725rem', color: '#64748b' }}>{stat.chucVu}</div>
+                    </td>
+                    <td style={{ textAlign: 'center', color: '#64748b' }}>{stat.chuaBatDau}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <span className="badge badge-orange">{stat.dangLam}</span>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <span className="badge badge-green">{stat.hoanThanh}</span>
+                    </td>
+                    <td style={{ textAlign: 'center', fontWeight: '700', color: '#0f172a' }}>
+                      {stat.tong}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Table 2: Cảnh báo công việc quá hạn */}
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{
+            padding: '1rem 1.25rem',
+            borderBottom: '1px solid #e2e8f0',
+            backgroundColor: '#ffffff',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#dc2626' }}></span>
+                Tác vụ cần đẩy nhanh tiến độ
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                Danh sách cán bộ có công việc đã vượt mốc kế hoạch
+              </div>
+            </div>
+            <span className="badge badge-red">
+              {overdueTasks} quá hạn
+            </span>
+          </div>
+
+          <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Cán bộ phụ trách</th>
+                  <th style={{ textAlign: 'center' }}>Số việc trễ hạn</th>
+                  <th style={{ textAlign: 'center' }}>Mức cảnh báo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {statsList.filter(s => s.quaHan > 0).length === 0 ? (
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: 'center', padding: '2.5rem', color: '#059669' }}>
+                      ✓ Tuyệt vời! Hiện tại không có tác vụ nào bị quá hạn.
+                    </td>
+                  </tr>
+                ) : (
+                  statsList.filter(s => s.quaHan > 0).map((stat) => (
+                    <tr key={stat.id}>
+                      <td>
+                        <div style={{ fontWeight: '600', color: '#0f172a' }}>{stat.name}</div>
+                        <div style={{ fontSize: '0.725rem', color: '#64748b' }}>{stat.chucVu}</div>
+                      </td>
+                      <td style={{ textAlign: 'center', fontWeight: '700', color: '#dc2626' }}>
+                        {stat.quaHan}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span className="badge badge-red">Ưu tiên xử lý</span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );
