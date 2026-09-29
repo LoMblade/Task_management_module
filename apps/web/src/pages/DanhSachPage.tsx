@@ -25,21 +25,22 @@ export function DanhSachPage({ onOpenDetail }: { onOpenDetail: (id: string, mode
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.35rem' }}>
-            Quản lý Công việc & Tiến độ Thi công
+      {/* Compact Top Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+            Quản lý Công việc & Tiến độ
           </h2>
-          <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0 }}>
-            Theo dõi phân bổ nguồn lực, nghiệm thu đầu việc và đôn đốc các tổ đội hiện trường
-          </p>
+          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+            Theo dõi phân công, nghiệm thu và đôn đốc hiện trường
+          </span>
         </div>
         <button 
           className="btn btn-primary" 
           onClick={() => setIsFormOpen(true)}
-          style={{ height: '40px', padding: '0 1.25rem', backgroundColor: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600' }}
+          style={{ height: '30px', padding: '0 0.85rem', backgroundColor: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: '600', fontSize: '0.775rem' }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
@@ -47,12 +48,14 @@ export function DanhSachPage({ onOpenDetail }: { onOpenDetail: (id: string, mode
         </button>
       </div>
 
-      <div className="tabs">
+      {/* Tabs - Slim */}
+      <div className="tabs" style={{ marginBottom: '0.5rem' }}>
         {['CUA_TOI', 'TOI_GIAO', 'THEO_DOI', 'TAT_CA'].map(scope => (
           <div 
             key={scope} 
             className={`tab ${filters.scope === scope ? 'active' : ''}`}
             onClick={() => handleTabClick(scope)}
+            style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}
           >
             {scope === 'CUA_TOI' ? 'Việc của tôi' :
              scope === 'TOI_GIAO' ? 'Việc tôi giao' :
@@ -61,7 +64,7 @@ export function DanhSachPage({ onOpenDetail }: { onOpenDetail: (id: string, mode
         ))}
       </div>
 
-      <div className="card">
+      <div className="card" style={{ padding: '0.65rem 0.85rem', marginBottom: 0 }}>
         <TaskFilters filters={filters} setFilters={setFilters} />
         
         {isLoading && <LoadingState />}

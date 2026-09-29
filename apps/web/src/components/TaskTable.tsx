@@ -22,16 +22,16 @@ export function TaskTable({ tasks, onRowClick }: { tasks: any[], onRowClick: (id
   };
 
   return (
-    <table className="table" style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#fff', fontSize: '0.9rem' }}>
-      <thead style={{ backgroundColor: '#f4f6f8', textAlign: 'left', borderBottom: '2px solid #e0e0e0' }}>
+    <table className="table" style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#fff', fontSize: '0.8125rem' }}>
+      <thead style={{ backgroundColor: '#f8fafc', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
         <tr>
-          <th style={{ padding: '12px 16px' }}>Mã</th>
-          <th style={{ padding: '12px 16px' }}>Tên công việc</th>
-          <th style={{ padding: '12px 16px' }}>Người thực hiện</th>
-          <th style={{ padding: '12px 16px' }}>Ưu tiên</th>
-          <th style={{ padding: '12px 16px' }}>Hạn hoàn thành</th>
-          <th style={{ padding: '12px 16px' }}>Trạng thái</th>
-          <th style={{ padding: '12px 16px', textAlign: 'center' }}>Hành động</th>
+          <th style={{ padding: '6px 10px', fontSize: '0.725rem' }}>Mã</th>
+          <th style={{ padding: '6px 10px', fontSize: '0.725rem' }}>Tên công việc</th>
+          <th style={{ padding: '6px 10px', fontSize: '0.725rem' }}>Người thực hiện</th>
+          <th style={{ padding: '6px 10px', fontSize: '0.725rem' }}>Ưu tiên</th>
+          <th style={{ padding: '6px 10px', fontSize: '0.725rem' }}>Hạn hoàn thành</th>
+          <th style={{ padding: '6px 10px', fontSize: '0.725rem' }}>Trạng thái</th>
+          <th style={{ padding: '6px 10px', fontSize: '0.725rem', textAlign: 'center' }}>Hành động</th>
         </tr>
       </thead>
       <tbody>
@@ -44,19 +44,19 @@ export function TaskTable({ tasks, onRowClick }: { tasks: any[], onRowClick: (id
             <tr 
               key={task.id} 
               onDoubleClick={() => onRowClick(task.id, 'view')}
-              style={{ borderBottom: '1px solid #e0e0e0', transition: 'background-color 0.2s' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+              style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
-              <td style={{ padding: '12px 16px' }}>{task.ma}</td>
-              <td style={{ padding: '12px 16px', fontWeight: '500', color: '#0056b3' }}>{task.ten}</td>
-              <td style={{ padding: '12px 16px' }}>{task.nguoiThucHienIds?.map(getUserName).join(', ')}</td>
-              <td style={{ padding: '12px 16px' }}><PriorityBadge priority={task.uuTien} /></td>
-              <td style={{ padding: '12px 16px', color: isOverdue ? 'red' : 'inherit', fontWeight: isOverdue ? 'bold' : 'normal' }}>
+              <td style={{ padding: '6px 10px', fontWeight: '600', color: '#64748b', fontSize: '0.75rem' }}>{task.ma}</td>
+              <td style={{ padding: '6px 10px', fontWeight: '600', color: '#1e3a8a' }}>{task.ten}</td>
+              <td style={{ padding: '6px 10px', color: '#334155' }}>{task.nguoiThucHienIds?.map(getUserName).join(', ')}</td>
+              <td style={{ padding: '6px 10px' }}><PriorityBadge priority={task.uuTien} /></td>
+              <td style={{ padding: '6px 10px', color: isOverdue ? '#dc2626' : '#334155', fontWeight: isOverdue ? '600' : 'normal' }}>
                 {task.hetHan ? new Date(task.hetHan).toLocaleDateString('vi-VN') : '-'}
               </td>
-              <td style={{ padding: '12px 16px' }}><StatusBadge status={task.trangThai} /></td>
-              <td style={{ padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+              <td style={{ padding: '6px 10px' }}><StatusBadge status={task.trangThai} /></td>
+              <td style={{ padding: '6px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                 <button 
                   title="Chi tiết (Read-only)"
                   style={{ background: 'none', border: 'none', cursor: 'pointer', margin: '0 4px', fontSize: '1.1rem' }} 

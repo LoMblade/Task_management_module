@@ -60,86 +60,86 @@ export function TrangChuPage() {
 
   return (
     <div>
-      {/* Header Page */}
-      <div style={{ marginBottom: '1.75rem' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.35rem' }}>
+      {/* Header Page - Compact */}
+      <div style={{ marginBottom: '0.65rem' }}>
+        <h2 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.15rem 0' }}>
           Tổng quan Tiến độ & Hiệu suất Dự án
         </h2>
-        <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0 }}>
+        <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>
           Báo cáo thống kê thời gian thực từ hiện trường thi công và các ban điều hành gói thầu
         </p>
       </div>
       
-      {/* KPI Cards Strip */}
+      {/* KPI Cards Strip - Slim */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '1.25rem',
-        marginBottom: '2rem'
+        gap: '0.75rem',
+        marginBottom: '1rem'
       }}>
-        <div className="stat-card">
-          <div className="stat-icon" style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}>
+        <div className="stat-card" style={{ padding: '0.65rem 0.85rem' }}>
+          <div className="stat-icon" style={{ backgroundColor: '#eff6ff', color: '#2563eb', width: '32px', height: '32px', fontSize: '1rem' }}>
             📋
           </div>
           <div>
-            <div style={{ fontSize: '0.775rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Tổng công việc
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#0f172a' }}>
+            <div style={{ fontSize: '1.35rem', fontWeight: '700', color: '#0f172a', lineHeight: '1.2' }}>
               {totalTasks}
             </div>
-            <div style={{ fontSize: '0.725rem', color: '#059669', marginTop: '0.2rem' }}>
+            <div style={{ fontSize: '0.675rem', color: '#059669' }}>
               Trên {duAns.length} gói thầu dự án
             </div>
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon" style={{ backgroundColor: '#ecfdf5', color: '#059669' }}>
+        <div className="stat-card" style={{ padding: '0.65rem 0.85rem' }}>
+          <div className="stat-icon" style={{ backgroundColor: '#ecfdf5', color: '#059669', width: '32px', height: '32px', fontSize: '1rem' }}>
             ⚡
           </div>
           <div>
-            <div style={{ fontSize: '0.775rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Đang thi công
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#059669' }}>
+            <div style={{ fontSize: '1.35rem', fontWeight: '700', color: '#059669', lineHeight: '1.2' }}>
               {inProgressTasks}
             </div>
-            <div style={{ fontSize: '0.725rem', color: '#64748b', marginTop: '0.2rem' }}>
+            <div style={{ fontSize: '0.675rem', color: '#64748b' }}>
               Chiếm {totalTasks > 0 ? Math.round((inProgressTasks / totalTasks) * 100) : 0}% khối lượng
             </div>
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon" style={{ backgroundColor: '#fffbeb', color: '#d97706' }}>
+        <div className="stat-card" style={{ padding: '0.65rem 0.85rem' }}>
+          <div className="stat-icon" style={{ backgroundColor: '#fffbeb', color: '#d97706', width: '32px', height: '32px', fontSize: '1rem' }}>
             ⏳
           </div>
           <div>
-            <div style={{ fontSize: '0.775rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Chờ nghiệm thu
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#d97706' }}>
+            <div style={{ fontSize: '1.35rem', fontWeight: '700', color: '#d97706', lineHeight: '1.2' }}>
               {pendingTasks}
             </div>
-            <div style={{ fontSize: '0.725rem', color: '#64748b', marginTop: '0.2rem' }}>
+            <div style={{ fontSize: '0.675rem', color: '#64748b' }}>
               Cần lãnh đạo phê duyệt
             </div>
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon" style={{ backgroundColor: '#fef2f2', color: '#dc2626' }}>
+        <div className="stat-card" style={{ padding: '0.65rem 0.85rem' }}>
+          <div className="stat-icon" style={{ backgroundColor: '#fef2f2', color: '#dc2626', width: '32px', height: '32px', fontSize: '1rem' }}>
             ⚠️
           </div>
           <div>
-            <div style={{ fontSize: '0.775rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Tác vụ trễ hạn
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#dc2626' }}>
+            <div style={{ fontSize: '1.35rem', fontWeight: '700', color: '#dc2626', lineHeight: '1.2' }}>
               {overdueTasks}
             </div>
-            <div style={{ fontSize: '0.725rem', color: '#dc2626', marginTop: '0.2rem' }}>
+            <div style={{ fontSize: '0.675rem', color: '#dc2626' }}>
               Cần đôn đốc hiện trường
             </div>
           </div>
@@ -147,11 +147,11 @@ export function TrangChuPage() {
       </div>
 
       {/* Main Grid: Hai bảng điều hành */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '1rem' }}>
         {/* Table 1: Phân bổ khối lượng theo nhân sự */}
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 0 }}>
           <div style={{
-            padding: '1rem 1.25rem',
+            padding: '0.6rem 0.85rem',
             borderBottom: '1px solid #e2e8f0',
             backgroundColor: '#ffffff',
             display: 'flex',
@@ -159,14 +159,14 @@ export function TrangChuPage() {
             alignItems: 'center'
           }}>
             <div>
-              <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#0f172a' }}>
+              <div style={{ fontWeight: '700', fontSize: '0.85rem', color: '#0f172a' }}>
                 Phân bổ khối lượng theo nhân sự
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
                 Tiến độ giải quyết công việc của từng cá nhân phụ trách
               </div>
             </div>
-            <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: '600' }}>
+            <span style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: '600' }}>
               {statsList.length} nhân sự
             </span>
           </div>
