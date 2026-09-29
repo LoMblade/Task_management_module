@@ -1,20 +1,23 @@
 import React, { useState } from 'react';
-import { useCreateCongViec, useUpdateCongViec, useNhanVien } from '../hooks';
+import { useCreateCongViec, useUpdateCongViec, useNhanVien, useDuAn } from '../hooks';
 
 export function TaskForm({ task, onClose }: { task?: any, onClose: () => void }) {
   const isEdit = !!task;
   const createMutation = useCreateCongViec();
   const updateMutation = useUpdateCongViec();
   const { data: nhanVienResponse } = useNhanVien();
-  const USERS = nhanVienResponse?.data || [];
+  const { data: duAnResponse } = useDuAn();
+  
+  const nhanViens = nhanVienResponse?.data || [];
+  const duAns = duAnResponse?.data || [];
 
   const [formData, setFormData] = useState({
-    tenCongViec: task?.tenCongViec || '',
+    ten: task?.ten || '',
     moTa: task?.moTa || '',
-    duAnId: task?.duAnId || 'viec-chung',
-    mucDoUuTien: task?.mucDoUuTien || 'TRUNG_BINH',
-    ngayBatDau: task?.ngayBatDau ? new Date(task.ngayBatDau).toISOString().split('T')[0] : '',
-    hanHoanThanh: task?.hanHoanThanh ? new Date(task.hanHoanThanh).toISOString().split('T')[0] : '',
+    duAnId: task?.duAnId || '',
+    uuTien: task?.uuTien || 'BINH_THUONG',
+    batDau: task?.batDau ? new Date(task.batDau).toISOString().split('T')[0] : '',
+    hetHan: task?.hetHan ? new Date(task.hetHan).toISOString().split('T')[0] : '',
     nguoiThucHienIds: task?.nguoiThucHienIds || [],
     nguoiTheoDoiIds: task?.nguoiTheoDoiIds || [],
   });
@@ -23,19 +26,32 @@ export function TaskForm({ task, onClose }: { task?: any, onClose: () => void })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.hanHoanThanh && formData.ngayBatDau && new Date(formData.hanHoanThanh) < new Date(formData.ngayBatDau)) {
-      setError('Hạn hoàn thành không thể trước ngày bắt đầu');
+    if (formData.hetHan && formData.batDau && new Date(formData.hetHan) < new Date(formData.batDau)) {
+      setError('Hạn không được trước ngày bắt đầu');
+      return;
+    }
+    if (formData.nguoiThucHienIds.length === 0) {
+      setError('Chọn ít nhất một người thực hiện');
       return;
     }
 
-    const payload = { ...formData };
-    if (!payload.ngayBatDau) delete (payload as any).ngayBatDau;
-    if (!payload.hanHoanThanh) delete (payload as any).hanHoanThanh;
+    const payload: any = { ...formData };
+    if (!payload.batDau) delete payload.batDau;
+    if (!payload.hetHan) delete payload.hetHan;
+    if (payload.duAnId === 'viec-chung' || !payload.duAnId) {
+      delete payload.duAnId;
+    }
 
     if (isEdit) {
-      updateMutation.mutate({ id: task.id, input: payload }, { onSuccess: onClose });
+      updateMutation.mutate({ id: task.id, input: payload }, { 
+        onSuccess: onClose,
+        onError: (err: any) => setError(err.message || 'Có lỗi xảy ra')
+      });
     } else {
-      createMutation.mutate(payload, { onSuccess: onClose });
+      createMutation.mutate(payload, { 
+        onSuccess: onClose,
+        onError: (err: any) => setError(err.message || 'Có lỗi xảy ra')
+      });
     }
   };
 
@@ -45,64 +61,140 @@ export function TaskForm({ task, onClose }: { task?: any, onClose: () => void })
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <h2>{isEdit ? 'Sửa công việc' : 'Giao việc mới'}</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Tên công việc *</label>
-            <input required className="form-control" value={formData.tenCongViec} onChange={e => setFormData({...formData, tenCongViec: e.target.value})} />
-          </div>
-          <div className="form-group">
-            <label>Mô tả</label>
-            <textarea className="form-control" value={formData.moTa} onChange={e => setFormData({...formData, moTa: e.target.value})} />
-          </div>
-          <div className="form-group">
-            <label>Dự án</label>
-            <select className="form-control" value={formData.duAnId} onChange={e => setFormData({...formData, duAnId: e.target.value})}>
-              <option value="viec-chung">Việc chung</option>
-              <option value="du-an-1">Dự án 1</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Mức độ ưu tiên</label>
-            <select className="form-control" value={formData.mucDoUuTien} onChange={e => setFormData({...formData, mucDoUuTien: e.target.value})}>
-              <option value="THAP">Thấp</option>
-              <option value="TRUNG_BINH">Trung bình</option>
-              <option value="CAO">Cao</option>
-            </select>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label>Ngày bắt đầu</label>
-              <input type="date" className="form-control" value={formData.ngayBatDau} onChange={e => setFormData({...formData, ngayBatDau: e.target.value})} />
-            </div>
-            <div className="form-group">
-              <label>Hạn hoàn thành</label>
-              <input type="date" className="form-control" value={formData.hanHoanThanh} onChange={e => setFormData({...formData, hanHoanThanh: e.target.value})} />
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label>Người thực hiện</label>
-              <select multiple className="form-control" value={formData.nguoiThucHienIds} onChange={e => handleMultiSelect(e, 'nguoiThucHienIds')}>
-                {USERS.map(u => <option key={u.id} value={u.id}>{u.ten}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Người theo dõi</label>
-              <select multiple className="form-control" value={formData.nguoiTheoDoiIds} onChange={e => handleMultiSelect(e, 'nguoiTheoDoiIds')}>
-                {USERS.map(u => <option key={u.id} value={u.id}>{u.ten}</option>)}
-              </select>
-            </div>
+    <div style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 2000
+    }} onClick={onClose}>
+      <div style={{
+        backgroundColor: 'white',
+        width: '90%',
+        maxWidth: '600px',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        borderRadius: '8px',
+        padding: '2rem'
+      }} onClick={e => e.stopPropagation()}>
+        <h2 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#17211b' }}>
+          {isEdit ? 'Sửa công việc' : 'Giao việc mới'}
+        </h2>
+        
+        {error && <div style={{ color: '#c62828', marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#ffebee', borderRadius: '4px' }}>{error}</div>}
+        
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Tên công việc <span style={{ color: 'red' }}>*</span></label>
+            <input 
+              type="text" 
+              className="input"
+              value={formData.ten} 
+              onChange={e => setFormData({ ...formData, ten: e.target.value })} 
+              required 
+            />
           </div>
           
-          {error && <div className="error-text">{error}</div>}
-          
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
-            <button type="button" className="btn" onClick={onClose}>Hủy</button>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Mô tả</label>
+            <textarea 
+              className="input"
+              style={{ minHeight: '80px' }}
+              value={formData.moTa} 
+              onChange={e => setFormData({ ...formData, moTa: e.target.value })} 
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Dự án</label>
+              <select 
+                className="input"
+                value={formData.duAnId || 'viec-chung'} 
+                onChange={e => setFormData({ ...formData, duAnId: e.target.value })}
+              >
+                <option value="viec-chung">-- Việc chung --</option>
+                {duAns.map((da: any) => (
+                  <option key={da.id} value={da.id}>{da.ten}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Mức độ ưu tiên</label>
+              <select 
+                className="input"
+                value={formData.uuTien} 
+                onChange={e => setFormData({ ...formData, uuTien: e.target.value })}
+              >
+                <option value="THAP">Thấp</option>
+                <option value="BINH_THUONG">Bình thường</option>
+                <option value="CAO">Cao</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Ngày bắt đầu</label>
+              <input 
+                type="date" 
+                className="input"
+                value={formData.batDau} 
+                onChange={e => setFormData({ ...formData, batDau: e.target.value })} 
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Hạn hoàn thành</label>
+              <input 
+                type="date" 
+                className="input"
+                value={formData.hetHan} 
+                onChange={e => setFormData({ ...formData, hetHan: e.target.value })} 
+              />
+            </div>
+          </div>
+
+          {!isEdit && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Người thực hiện <span style={{ color: 'red' }}>*</span></label>
+                <select 
+                  multiple 
+                  className="input"
+                  style={{ minHeight: '120px' }}
+                  value={formData.nguoiThucHienIds} 
+                  onChange={e => handleMultiSelect(e, 'nguoiThucHienIds')}
+                  required
+                >
+                  {nhanViens.map((u: any) => (
+                    <option key={u.id} value={u.id}>{u.ten} ({u.chucVu})</option>
+                  ))}
+                </select>
+                <small style={{ color: '#666' }}>Giữ Ctrl để chọn nhiều</small>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Người theo dõi</label>
+                <select 
+                  multiple 
+                  className="input"
+                  style={{ minHeight: '120px' }}
+                  value={formData.nguoiTheoDoiIds} 
+                  onChange={e => handleMultiSelect(e, 'nguoiTheoDoiIds')}
+                >
+                  {nhanViens.map((u: any) => (
+                    <option key={u.id} value={u.id}>{u.ten} ({u.chucVu})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Hủy</button>
             <button type="submit" className="btn btn-accent" disabled={createMutation.isPending || updateMutation.isPending}>
-              {isEdit ? 'Cập nhật' : 'Tạo mới'}
+              {createMutation.isPending || updateMutation.isPending ? 'Đang lưu...' : 'Lưu lại'}
             </button>
           </div>
         </form>

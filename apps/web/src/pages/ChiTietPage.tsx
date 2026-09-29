@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useCongViec, useTransitionCongViec, useDeleteCongViec } from '../hooks';
+import React, { useState, useEffect } from 'react';
+import { useCongViec, useTransitionCongViec, useDeleteCongViec, useNhanVien } from '../hooks';
 import { useAuth } from '../auth';
 import { StatusBadge } from '../components/StatusBadge';
 import { PriorityBadge } from '../components/PriorityBadge';
@@ -10,120 +10,131 @@ import { SubtaskList } from '../components/SubtaskList';
 import { CommentSection } from '../components/CommentSection';
 import { TaskForm } from '../components/TaskForm';
 
-export function ChiTietPage({ id, onBack }: { id: string, onBack: () => void }) {
+export function ChiTietPage({ id, mode, onBack }: { id: string, mode: 'view' | 'edit', onBack: () => void }) {
   const { data: response, isLoading, error, refetch } = useCongViec(id);
-  const { userId } = useAuth();
+  const { data: nhanVienResponse } = useNhanVien();
+  const nhanViens = nhanVienResponse?.data || [];
+  
+  const { userId, currentUser } = useAuth();
   const transitionMutation = useTransitionCongViec();
   const deleteMutation = useDeleteCongViec();
 
-  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(mode === 'edit');
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectInput, setShowRejectInput] = useState(false);
+
+  useEffect(() => {
+    setIsEditOpen(mode === 'edit');
+  }, [mode]);
+
+  function getUserName(uId: string) {
+    return nhanViens.find((u: any) => u.id === uId)?.ten || uId;
+  }
 
   if (isLoading) return <LoadingState />;
   if (error) return <ErrorState error={error as Error} onRetry={refetch} />;
   const task = response?.data;
   if (!task) return null;
 
-  const isNguoiGiao = task.nguoiGiaoId === userId;
-  const isNguoiThucHien = task.nguoiThucHienIds?.includes(userId);
+  const isAdmin = currentUser?.chucVu === 'Giám đốc' || currentUser?.chucVu === 'Tổng giám đốc';
+  const isNguoiGiao = task.nguoiGiaoId === userId || isAdmin;
+  const isNguoiThucHien = task.nguoiThucHienIds?.includes(userId) || isAdmin;
   const isHoanThanh = task.trangThai === 'HOAN_THANH';
 
-  const handleAction = (hanhDong: string, ghiChu?: string) => {
-    transitionMutation.mutate({ id, body: { hanhDong, ghiChu } });
+  const handleTransition = (trangThai: string, lyDo?: string) => {
+    transitionMutation.mutate({ id, body: { trangThai, lyDo } });
   };
 
   const handleDelete = () => {
-    if (confirm('Bạn có chắc chắn muốn xóa công việc này?')) {
+    if (window.confirm('Bạn có chắc chắn muốn xóa công việc này?')) {
       deleteMutation.mutate(id, {
         onSuccess: onBack
       });
     }
   };
 
+  if (isEditOpen && !isHoanThanh && isNguoiGiao) {
+    return <TaskForm task={task} onClose={() => { setIsEditOpen(false); if (mode === 'edit') onBack(); }} />;
+  }
+
   return (
     <div>
-      <button className="btn" onClick={onBack} style={{ marginBottom: '1rem' }}>&larr; Quay lại</button>
-      
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <h2>{task.tenCongViec} ({task.maCongViec})</h2>
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-              <StatusBadge status={task.trangThai} />
-              <PriorityBadge priority={task.mucDoUuTien} />
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {isNguoiGiao && !isHoanThanh && (
-              <>
-                <button className="btn btn-accent" onClick={() => setIsEditOpen(true)}>Sửa</button>
-                <button className="btn" style={{ backgroundColor: '#c62828' }} onClick={handleDelete}>Xóa</button>
-              </>
-            )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e0e0e0', paddingBottom: '1rem', marginBottom: '1rem' }}>
+        <div>
+          <h2 style={{ margin: '0 0 0.5rem 0', color: '#0056b3' }}>{task.ten} ({task.ma})</h2>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <StatusBadge status={task.trangThai} />
+            <PriorityBadge priority={task.uuTien} />
           </div>
         </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '1rem' }}>
-          <div>
-            <p><strong>Mô tả:</strong> {task.moTa || 'Không có'}</p>
-            <p><strong>Dự án:</strong> {task.duAnId}</p>
-            <p><strong>Ngày bắt đầu:</strong> {task.ngayBatDau ? new Date(task.ngayBatDau).toLocaleDateString('vi-VN') : '-'}</p>
-            <p><strong>Hạn hoàn thành:</strong> {task.hanHoanThanh ? new Date(task.hanHoanThanh).toLocaleDateString('vi-VN') : '-'}</p>
-          </div>
-          <div>
-            <p><strong>Người giao:</strong> {task.nguoiGiaoId}</p>
-            <p><strong>Người thực hiện:</strong> {task.nguoiThucHienIds?.join(', ')}</p>
-            <p><strong>Người theo dõi:</strong> {task.nguoiTheoDoiIds?.join(', ')}</p>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
-          {!isHoanThanh && isNguoiThucHien && task.trangThai === 'CHUA_BAT_DAU' && (
-            <button className="btn btn-accent" onClick={() => handleAction('BAT_DAU')}>Bắt đầu làm</button>
-          )}
-          {!isHoanThanh && isNguoiThucHien && task.trangThai === 'DANG_LAM' && (
-            <button className="btn btn-accent" onClick={() => handleAction('BAO_CAO_HOAN_THANH')}>Gửi duyệt</button>
-          )}
-          {!isHoanThanh && isNguoiGiao && task.trangThai === 'CHO_DUYET' && (
+        
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {isNguoiGiao && !isHoanThanh && (
             <>
-              <button className="btn" style={{ backgroundColor: '#2e7d32', color: 'white' }} onClick={() => handleAction('DUYET')}>Duyệt</button>
-              {!showRejectInput ? (
-                <button className="btn" style={{ backgroundColor: '#c62828', color: 'white' }} onClick={() => setShowRejectInput(true)}>Từ chối</button>
-              ) : (
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input type="text" className="form-control" placeholder="Lý do từ chối..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} />
-                  <button className="btn" style={{ backgroundColor: '#c62828', color: 'white' }} onClick={() => handleAction('TU_CHOI', rejectReason)}>Xác nhận</button>
-                  <button className="btn" onClick={() => setShowRejectInput(false)}>Hủy</button>
-                </div>
-              )}
+              <button className="btn btn-accent" onClick={() => setIsEditOpen(true)}>✏️ Sửa</button>
+              <button className="btn" style={{ backgroundColor: '#c62828', color: 'white' }} onClick={handleDelete}>🗑️ Xóa</button>
             </>
           )}
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
         <div>
-          <div className="card">
-            <h3>Việc con</h3>
+          <p><strong>Mô tả:</strong> {task.moTa || 'Không có'}</p>
+          <p><strong>Dự án:</strong> {task.duAnId === 'viec-chung' ? 'Việc chung' : (task.duAnId || 'Việc chung')}</p>
+          <p><strong>Ngày bắt đầu:</strong> {task.batDau ? new Date(task.batDau).toLocaleDateString('vi-VN') : '-'}</p>
+          <p><strong>Hạn hoàn thành:</strong> {task.hetHan ? new Date(task.hetHan).toLocaleDateString('vi-VN') : '-'}</p>
+          <p><strong>Tiến độ:</strong> {task.tienDo}%</p>
+        </div>
+        <div>
+          <p><strong>Người giao:</strong> {getUserName(task.nguoiGiaoId)}</p>
+          <p><strong>Người thực hiện:</strong> {task.nguoiThucHienIds?.map(getUserName).join(', ')}</p>
+          <p><strong>Người theo dõi:</strong> {task.nguoiTheoDoiIds?.map(getUserName).join(', ')}</p>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+        {!isHoanThanh && isNguoiThucHien && task.trangThai === 'CHUA_BAT_DAU' && (
+          <button className="btn btn-accent" onClick={() => handleTransition('DANG_LAM')}>▶️ Bắt đầu làm</button>
+        )}
+        {!isHoanThanh && isNguoiThucHien && task.trangThai === 'DANG_LAM' && (
+          <button className="btn btn-accent" onClick={() => handleTransition('CHO_DUYET')}>✅ Gửi duyệt</button>
+        )}
+        {!isHoanThanh && isNguoiGiao && task.trangThai === 'CHO_DUYET' && (
+          <>
+            <button className="btn" style={{ backgroundColor: '#2e7d32', color: 'white' }} onClick={() => handleTransition('HOAN_THANH')}>Duyệt hoàn thành</button>
+            {!showRejectInput ? (
+              <button className="btn" style={{ backgroundColor: '#c62828', color: 'white' }} onClick={() => setShowRejectInput(true)}>Từ chối</button>
+            ) : (
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input type="text" className="input" placeholder="Lý do từ chối..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} />
+                <button className="btn" style={{ backgroundColor: '#c62828', color: 'white' }} onClick={() => handleTransition('DANG_LAM', rejectReason)}>Xác nhận</button>
+                <button className="btn btn-secondary" onClick={() => setShowRejectInput(false)}>Hủy</button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+        <div>
+          <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Việc con</h3>
             <SubtaskList congViecId={id} />
           </div>
-          <div className="card">
-            <h3>Bình luận</h3>
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Bình luận</h3>
             <CommentSection congViecId={id} />
           </div>
         </div>
         <div>
-          <div className="card">
-            <h3>Lịch sử thay đổi</h3>
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Lịch sử thay đổi</h3>
             <ChangeHistory congViecId={id} />
           </div>
         </div>
       </div>
-
-      {isEditOpen && <TaskForm task={task} onClose={() => setIsEditOpen(false)} />}
     </div>
   );
 }

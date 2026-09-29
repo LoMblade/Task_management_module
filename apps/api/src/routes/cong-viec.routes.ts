@@ -17,7 +17,7 @@ function parseAuth(req: any): AuthContext {
   try {
     const token = auth.replace('Bearer ', '');
     const decoded = JSON.parse(Buffer.from(token, 'base64url').toString('utf-8'));
-    return { userId: decoded.userId, congTyId: decoded.congTyId };
+    return { userId: decoded.userId, congTyId: decoded.congTyId, isAdmin: decoded.isAdmin };
   } catch {
     throw new DomainError('UNAUTHORIZED', 'Invalid token', 401);
   }

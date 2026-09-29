@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { tokenFor } from './api';
 
 export const USERS = [
@@ -15,19 +15,41 @@ export const USERS = [
 ];
 
 type AuthContextType = {
-  userId: string;
-  setUserId: (id: string) => void;
-  token: string;
+  userId: string | null;
+  currentUser: typeof USERS[0] | null;
+  token: string | null;
+  login: (username: string, pass: string) => boolean;
+  logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [userId, setUserId] = useState(USERS[0].id);
-  const token = tokenFor(userId);
+  const [userId, setUserId] = useState<string | null>(() => {
+    return localStorage.getItem('auth_userId');
+  });
+
+  const currentUser = userId ? USERS.find(u => u.id === userId) || null : null;
+  const token = userId ? tokenFor(userId, currentUser?.chucVu) : null;
+
+  const login = (username: string, pass: string) => {
+    // Fake login: Any username from USERS array with password '123456'
+    const user = USERS.find(u => u.id === username);
+    if (user && pass === '123456') {
+      setUserId(user.id);
+      localStorage.setItem('auth_userId', user.id);
+      return true;
+    }
+    return false;
+  };
+
+  const logout = () => {
+    setUserId(null);
+    localStorage.removeItem('auth_userId');
+  };
 
   return (
-    <AuthContext.Provider value={{ userId, setUserId, token }}>
+    <AuthContext.Provider value={{ userId, currentUser, token, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

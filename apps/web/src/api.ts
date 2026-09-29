@@ -1,7 +1,8 @@
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
-export function tokenFor(userId: string): string {
-  return `Bearer ${btoa(JSON.stringify({ userId, congTyId: 'ct-long-do' }))}`;
+export function tokenFor(userId: string, chucVu?: string): string {
+  const isAdmin = chucVu === 'Giám đốc' || chucVu === 'Tổng giám đốc';
+  return `Bearer ${btoa(JSON.stringify({ userId, congTyId: 'ct-long-do', isAdmin }))}`;
 }
 
 async function request<T>(path: string, token: string, init?: RequestInit): Promise<T> {

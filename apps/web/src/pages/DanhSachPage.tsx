@@ -8,8 +8,8 @@ import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
 import { TaskForm } from '../components/TaskForm';
 
-export function DanhSachPage({ onOpenDetail }: { onOpenDetail: (id: string) => void }) {
-  const [filters, setFilters] = useState({ page: 1, limit: 10, scope: 'tat-ca' });
+export function DanhSachPage({ onOpenDetail }: { onOpenDetail: (id: string, mode: 'view' | 'edit') => void }) {
+  const [filters, setFilters] = useState({ page: 1, limit: 10, scope: 'TAT_CA' });
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   const searchParams = new URLSearchParams();
@@ -31,15 +31,15 @@ export function DanhSachPage({ onOpenDetail }: { onOpenDetail: (id: string) => v
       </div>
 
       <div className="tabs">
-        {['viec-cua-toi', 'viec-toi-giao', 'dang-theo-doi', 'tat-ca'].map(scope => (
+        {['CUA_TOI', 'TOI_GIAO', 'THEO_DOI', 'TAT_CA'].map(scope => (
           <div 
             key={scope} 
             className={`tab ${filters.scope === scope ? 'active' : ''}`}
             onClick={() => handleTabClick(scope)}
           >
-            {scope === 'viec-cua-toi' ? 'Việc của tôi' :
-             scope === 'viec-toi-giao' ? 'Việc tôi giao' :
-             scope === 'dang-theo-doi' ? 'Đang theo dõi' : 'Tất cả'}
+            {scope === 'CUA_TOI' ? 'Việc của tôi' :
+             scope === 'TOI_GIAO' ? 'Việc tôi giao' :
+             scope === 'THEO_DOI' ? 'Đang theo dõi' : 'Tất cả'}
           </div>
         ))}
       </div>

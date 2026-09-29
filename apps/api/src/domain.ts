@@ -1,6 +1,6 @@
 import type { CongViec, LichSuThayDoi, ViecCon, BinhLuan, NhanVien, DuAn } from '@erp/contracts';
 
-export type AuthContext = { userId: string; congTyId: string };
+export type AuthContext = { userId: string; congTyId: string; isAdmin?: boolean };
 
 export interface CongViecRepository {
   list(filter: CongViecFilter): Promise<{ items: CongViec[]; total: number; counts: ScopeCounts }>;
@@ -37,7 +37,7 @@ export interface DanhMucRepository {
 export type ScopeCounts = { cuaToi: number; toiGiao: number; theoDoi: number; tatCa: number };
 
 export type CongViecFilter = {
-  congTyId: string; userId: string; today: string;
+  congTyId: string; userId: string; isAdmin?: boolean; today: string;
   page: number; limit: number;
   scope: 'CUA_TOI' | 'TOI_GIAO' | 'THEO_DOI' | 'TAT_CA';
   duAnId?: string; trangThai?: string; uuTien?: string;

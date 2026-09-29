@@ -21,6 +21,7 @@ export class CongViecService {
 
   private checkVisibility(ctx: AuthContext, task: CongViec) {
     if (task.congTyId !== ctx.congTyId) throw new DomainError('NOT_FOUND', 'Không tìm thấy công việc', 404);
+    if (ctx.isAdmin) return;
     if (task.nguoiGiaoId !== ctx.userId && !task.nguoiThucHienIds.includes(ctx.userId) && !task.nguoiTheoDoiIds?.includes(ctx.userId)) {
       throw new DomainError('NOT_FOUND', 'Không tìm thấy công việc', 404);
     }
@@ -31,6 +32,7 @@ export class CongViecService {
     const result = await this.congViecRepo.list({
       congTyId: ctx.congTyId,
       userId: ctx.userId,
+      isAdmin: ctx.isAdmin,
       today,
       ...query
     });
