@@ -27,9 +27,8 @@ pnpm typecheck
 # (Tùy chọn) 5. Chạy unit tests cho tầng business logic
 pnpm test
 ```
-*Lưu ý: Bạn không cần chạy Docker Compose MongoDB ở bước này vì code đang sử dụng In-Memory Repositories theo thiết kế cho bài test.*
 
-## Các tính năng chính (Điểm cộng đã chọn)
+## Các tính năng chính 
 1. **Việc con (Subtasks)**: Công việc chính có thể có nhiều đầu việc con. Check/uncheck việc con sẽ tự động tính toán lại % tiến độ của công việc chính.
 2. **Bình luận (Comments)**: Mỗi công việc có mục bình luận riêng, cho phép lưu trữ lịch sử trao đổi của những người liên quan.
 
