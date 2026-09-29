@@ -162,6 +162,22 @@ export class MemoryDanhMucRepository implements DanhMucRepository {
     this.nhanVien.push(item);
   }
 
+  async updateNhanVien(congTyId: string, id: string, patch: Partial<NhanVien>): Promise<NhanVien> {
+    const idx = this.nhanVien.findIndex(n => n.id === id && n.congTyId === congTyId);
+    if (idx > -1) {
+      this.nhanVien[idx] = { ...this.nhanVien[idx], ...patch };
+      return this.nhanVien[idx];
+    }
+    throw new Error('Not found');
+  }
+
+  async deleteNhanVien(congTyId: string, id: string): Promise<void> {
+    const idx = this.nhanVien.findIndex(n => n.id === id && n.congTyId === congTyId);
+    if (idx > -1) {
+      this.nhanVien.splice(idx, 1);
+    }
+  }
+
   async insertDuAn(item: DuAn): Promise<void> {
     this.duAn.push(item);
   }

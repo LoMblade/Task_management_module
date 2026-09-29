@@ -1,5 +1,7 @@
+import 'dotenv/config';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import { MongoClient } from 'mongodb';
 import { 
   MemoryCongViecRepository, 
   MemoryLichSuRepository, 
@@ -7,6 +9,13 @@ import {
   MemoryBinhLuanRepository, 
   MemoryDanhMucRepository 
 } from './repositories/memory';
+import {
+  MongoCongViecRepository,
+  MongoLichSuRepository,
+  MongoViecConRepository,
+  MongoBinhLuanRepository,
+  MongoDanhMucRepository
+} from './repositories/mongo';
 import { CongViecService } from './services/cong-viec.service';
 import congViecRoutes from './routes/cong-viec.routes';
 import { seedDb } from './seed';
@@ -18,13 +27,41 @@ const fastify = Fastify({ logger: true });
 async function start() {
   await fastify.register(cors);
 
-  const congViecRepo = new MemoryCongViecRepository();
-  const lichSuRepo = new MemoryLichSuRepository();
-  const viecConRepo = new MemoryViecConRepository();
-  const binhLuanRepo = new MemoryBinhLuanRepository();
-  const danhMucRepo = new MemoryDanhMucRepository();
+  let congViecRepo, lichSuRepo, viecConRepo, binhLuanRepo, danhMucRepo;
 
-  await seedDb(congViecRepo, lichSuRepo, viecConRepo, binhLuanRepo, danhMucRepo);
+  if (process.env.MONGO_URL) {
+    console.log('Connecting to MongoDB...');
+    const client = new MongoClient(process.env.MONGO_URL);
+    await client.connect();
+    const db = client.db(process.env.DB_NAME || 'erp');
+    
+    congViecRepo = new MongoCongViecRepository(db);
+    lichSuRepo = new MongoLichSuRepository(db);
+    viecConRepo = new MongoViecConRepository(db);
+    binhLuanRepo = new MongoBinhLuanRepository(db);
+    danhMucRepo = new MongoDanhMucRepository(db);
+
+    await Promise.all([
+      congViecRepo.setupIndexes(),
+      lichSuRepo.setupIndexes(),
+      viecConRepo.setupIndexes(),
+      binhLuanRepo.setupIndexes(),
+      danhMucRepo.setupIndexes()
+    ]);
+  } else {
+    console.log('Using in-memory repository...');
+    congViecRepo = new MemoryCongViecRepository();
+    lichSuRepo = new MemoryLichSuRepository();
+    viecConRepo = new MemoryViecConRepository();
+    binhLuanRepo = new MemoryBinhLuanRepository();
+    danhMucRepo = new MemoryDanhMucRepository();
+  }
+
+  const existingDuAn = await danhMucRepo.listDuAn('ct-long-do');
+  if (existingDuAn.length === 0) {
+    console.log('Seeding database...');
+    await seedDb(congViecRepo, lichSuRepo, viecConRepo, binhLuanRepo, danhMucRepo);
+  }
 
   const service = new CongViecService(congViecRepo, lichSuRepo, viecConRepo, binhLuanRepo, danhMucRepo);
 

@@ -47,6 +47,12 @@ export const congViecApi = {
 export const danhMucApi = {
   listNhanVien: (token: string) =>
     request<{ data: any[] }>('/api/nhan-vien', token),
+  createNhanVien: (token: string, input: any) =>
+    request<{ data: any }>('/api/nhan-vien', token, { method: 'POST', body: JSON.stringify(input) }),
+  updateNhanVien: (token: string, id: string, input: any) =>
+    request<{ data: any }>(`/api/nhan-vien/${id}`, token, { method: 'PUT', body: JSON.stringify(input) }),
+  deleteNhanVien: (token: string, id: string) =>
+    request<{ data: any }>(`/api/nhan-vien/${id}`, token, { method: 'DELETE' }),
   listDuAn: (token: string) =>
     request<{ data: any[] }>('/api/du-an', token),
 };

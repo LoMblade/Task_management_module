@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useCreateCongViec, useUpdateCongViec, useNhanVien, useDuAn } from '../hooks';
+import { useToast } from './Toast';
+import { taoCongViecSchema, capNhatCongViecSchema } from '@erp/contracts';
 
 export function TaskForm({ task, onClose }: { task?: any, onClose: () => void }) {
   const isEdit = !!task;
@@ -7,6 +9,7 @@ export function TaskForm({ task, onClose }: { task?: any, onClose: () => void })
   const updateMutation = useUpdateCongViec();
   const { data: nhanVienResponse } = useNhanVien();
   const { data: duAnResponse } = useDuAn();
+  const toast = useToast();
   
   const nhanViens = nhanVienResponse?.data || [];
   const duAns = duAnResponse?.data || [];
@@ -26,15 +29,8 @@ export function TaskForm({ task, onClose }: { task?: any, onClose: () => void })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.hetHan && formData.batDau && new Date(formData.hetHan) < new Date(formData.batDau)) {
-      setError('Hạn không được trước ngày bắt đầu');
-      return;
-    }
-    if (formData.nguoiThucHienIds.length === 0) {
-      setError('Chọn ít nhất một người thực hiện');
-      return;
-    }
-
+    setError(null);
+    
     const payload: any = { ...formData };
     if (!payload.batDau) delete payload.batDau;
     if (!payload.hetHan) delete payload.hetHan;
@@ -42,22 +38,45 @@ export function TaskForm({ task, onClose }: { task?: any, onClose: () => void })
       delete payload.duAnId;
     }
 
-    if (isEdit) {
-      updateMutation.mutate({ id: task.id, input: payload }, { 
-        onSuccess: onClose,
-        onError: (err: any) => setError(err.message || 'Có lỗi xảy ra')
-      });
-    } else {
-      createMutation.mutate(payload, { 
-        onSuccess: onClose,
-        onError: (err: any) => setError(err.message || 'Có lỗi xảy ra')
-      });
+    try {
+      if (isEdit) {
+        capNhatCongViecSchema.parse(payload);
+        updateMutation.mutate({ id: task.id, input: payload }, { 
+          onSuccess: () => { onClose(); toast.success('Cập nhật công việc thành công'); },
+          onError: (err: any) => toast.error('Lỗi cập nhật', err.message)
+        });
+      } else {
+        taoCongViecSchema.parse(payload);
+        createMutation.mutate(payload, { 
+          onSuccess: () => { onClose(); toast.success('Giao việc mới thành công'); },
+          onError: (err: any) => toast.error('Lỗi giao việc', err.message)
+        });
+      }
+    } catch (err: any) {
+      if (err.errors) {
+        toast.error('Lỗi dữ liệu', err.errors[0].message);
+      } else {
+        toast.error('Lỗi', err.message);
+      }
     }
   };
 
-  const handleMultiSelect = (e: React.ChangeEvent<HTMLSelectElement>, field: string) => {
-    const values = Array.from(e.target.selectedOptions, option => option.value);
-    setFormData({ ...formData, [field]: values });
+  const toggleNguoiThucHien = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      nguoiThucHienIds: prev.nguoiThucHienIds.includes(id) 
+        ? prev.nguoiThucHienIds.filter((x: string) => x !== id)
+        : [...prev.nguoiThucHienIds, id]
+    }));
+  };
+
+  const toggleNguoiTheoDoi = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      nguoiTheoDoiIds: prev.nguoiTheoDoiIds.includes(id) 
+        ? prev.nguoiTheoDoiIds.filter((x: string) => x !== id)
+        : [...prev.nguoiTheoDoiIds, id]
+    }));
   };
 
   return (
@@ -79,55 +98,44 @@ export function TaskForm({ task, onClose }: { task?: any, onClose: () => void })
         borderRadius: '8px',
         padding: '2rem'
       }} onClick={e => e.stopPropagation()}>
-        <h2 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#17211b' }}>
-          {isEdit ? 'Sửa công việc' : 'Giao việc mới'}
-        </h2>
         
-        {error && <div style={{ color: '#c62828', marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#ffebee', borderRadius: '4px' }}>{error}</div>}
-        
+        <h2 style={{ marginTop: 0, marginBottom: '1.5rem' }}>{isEdit ? 'Sửa công việc' : 'Giao việc mới'}</h2>
+
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Tên công việc <span style={{ color: 'red' }}>*</span></label>
+            <label className="form-label">Tên công việc *</label>
             <input 
               type="text" 
-              className="input"
+              className="form-control" 
               value={formData.ten} 
-              onChange={e => setFormData({ ...formData, ten: e.target.value })} 
-              required 
+              onChange={e => setFormData({ ...formData, ten: e.target.value })}
+              placeholder="VD: Nghiệm thu..."
             />
           </div>
-          
+
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Mô tả</label>
+            <label className="form-label">Mô tả</label>
             <textarea 
-              className="input"
-              style={{ minHeight: '80px' }}
+              className="form-control" 
+              rows={3} 
               value={formData.moTa} 
-              onChange={e => setFormData({ ...formData, moTa: e.target.value })} 
+              onChange={e => setFormData({ ...formData, moTa: e.target.value })}
             />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Dự án</label>
-              <select 
-                className="input"
-                value={formData.duAnId || 'viec-chung'} 
-                onChange={e => setFormData({ ...formData, duAnId: e.target.value })}
-              >
-                <option value="viec-chung">-- Việc chung --</option>
+              <label className="form-label">Dự án</label>
+              <select className="form-control" value={formData.duAnId} onChange={e => setFormData({ ...formData, duAnId: e.target.value })}>
+                <option value="viec-chung">Việc chung (Không thuộc dự án)</option>
                 {duAns.map((da: any) => (
                   <option key={da.id} value={da.id}>{da.ten}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Mức độ ưu tiên</label>
-              <select 
-                className="input"
-                value={formData.uuTien} 
-                onChange={e => setFormData({ ...formData, uuTien: e.target.value })}
-              >
+              <label className="form-label">Độ ưu tiên</label>
+              <select className="form-control" value={formData.uuTien} onChange={e => setFormData({ ...formData, uuTien: e.target.value })}>
                 <option value="THAP">Thấp</option>
                 <option value="BINH_THUONG">Bình thường</option>
                 <option value="CAO">Cao</option>
@@ -137,65 +145,62 @@ export function TaskForm({ task, onClose }: { task?: any, onClose: () => void })
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Ngày bắt đầu</label>
+              <label className="form-label">Ngày bắt đầu</label>
               <input 
                 type="date" 
-                className="input"
+                className="form-control" 
                 value={formData.batDau} 
-                onChange={e => setFormData({ ...formData, batDau: e.target.value })} 
+                onChange={e => setFormData({ ...formData, batDau: e.target.value })}
               />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Hạn hoàn thành</label>
+              <label className="form-label">Hạn hoàn thành</label>
               <input 
                 type="date" 
-                className="input"
+                className="form-control" 
                 value={formData.hetHan} 
-                onChange={e => setFormData({ ...formData, hetHan: e.target.value })} 
+                onChange={e => setFormData({ ...formData, hetHan: e.target.value })}
               />
             </div>
           </div>
 
-          {!isEdit && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Người thực hiện <span style={{ color: 'red' }}>*</span></label>
-                <select 
-                  multiple 
-                  className="input"
-                  style={{ minHeight: '120px' }}
-                  value={formData.nguoiThucHienIds} 
-                  onChange={e => handleMultiSelect(e, 'nguoiThucHienIds')}
-                  required
-                >
-                  {nhanViens.map((u: any) => (
-                    <option key={u.id} value={u.id}>{u.ten} ({u.chucVu})</option>
-                  ))}
-                </select>
-                <small style={{ color: '#666' }}>Giữ Ctrl để chọn nhiều</small>
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Người theo dõi</label>
-                <select 
-                  multiple 
-                  className="input"
-                  style={{ minHeight: '120px' }}
-                  value={formData.nguoiTheoDoiIds} 
-                  onChange={e => handleMultiSelect(e, 'nguoiTheoDoiIds')}
-                >
-                  {nhanViens.map((u: any) => (
-                    <option key={u.id} value={u.id}>{u.ten} ({u.chucVu})</option>
-                  ))}
-                </select>
-              </div>
+          <div>
+            <label className="form-label">Người thực hiện * (Chọn ít nhất 1)</label>
+            <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #ddd', borderRadius: '4px', padding: '0.5rem' }}>
+              {nhanViens.map((nv: any) => (
+                <div key={nv.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                  <input 
+                    type="checkbox" 
+                    id={`th-${nv.id}`}
+                    checked={formData.nguoiThucHienIds.includes(nv.id)}
+                    onChange={() => toggleNguoiThucHien(nv.id)}
+                  />
+                  <label htmlFor={`th-${nv.id}`}>{nv.ten} ({nv.chucVu})</label>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
 
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
+          <div>
+            <label className="form-label">Người theo dõi</label>
+            <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #ddd', borderRadius: '4px', padding: '0.5rem' }}>
+              {nhanViens.map((nv: any) => (
+                <div key={nv.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                  <input 
+                    type="checkbox" 
+                    id={`td-${nv.id}`}
+                    checked={formData.nguoiTheoDoiIds.includes(nv.id)}
+                    onChange={() => toggleNguoiTheoDoi(nv.id)}
+                  />
+                  <label htmlFor={`td-${nv.id}`}>{nv.ten} ({nv.chucVu})</label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
             <button type="button" className="btn btn-secondary" onClick={onClose}>Hủy</button>
-            <button type="submit" className="btn btn-accent" disabled={createMutation.isPending || updateMutation.isPending}>
-              {createMutation.isPending || updateMutation.isPending ? 'Đang lưu...' : 'Lưu lại'}
-            </button>
+            <button type="submit" className="btn btn-accent">{isEdit ? 'Lưu thay đổi' : 'Tạo công việc'}</button>
           </div>
         </form>
       </div>

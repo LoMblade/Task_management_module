@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useCongViec, useTransitionCongViec, useDeleteCongViec, useNhanVien } from '../hooks';
+import { useCongViec, useTransitionCongViec, useDeleteCongViec, useUpdateCongViec, useNhanVien } from '../hooks';
 import { useAuth } from '../auth';
 import { StatusBadge } from '../components/StatusBadge';
 import { PriorityBadge } from '../components/PriorityBadge';
@@ -18,6 +18,7 @@ export function ChiTietPage({ id, mode, onBack }: { id: string, mode: 'view' | '
   const { userId, currentUser } = useAuth();
   const transitionMutation = useTransitionCongViec();
   const deleteMutation = useDeleteCongViec();
+  const updateMutation = useUpdateCongViec();
 
   const [isEditOpen, setIsEditOpen] = useState(mode === 'edit');
   const [rejectReason, setRejectReason] = useState('');
@@ -84,7 +85,22 @@ export function ChiTietPage({ id, mode, onBack }: { id: string, mode: 'view' | '
           <p><strong>Dự án:</strong> {task.duAnId === 'viec-chung' ? 'Việc chung' : (task.duAnId || 'Việc chung')}</p>
           <p><strong>Ngày bắt đầu:</strong> {task.batDau ? new Date(task.batDau).toLocaleDateString('vi-VN') : '-'}</p>
           <p><strong>Hạn hoàn thành:</strong> {task.hetHan ? new Date(task.hetHan).toLocaleDateString('vi-VN') : '-'}</p>
-          <p><strong>Tiến độ:</strong> {task.tienDo}%</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <p style={{ margin: 0 }}><strong>Tiến độ:</strong> {task.tienDo}%</p>
+            {!isHoanThanh && isNguoiThucHien && task.trangThai === 'DANG_LAM' && (
+              <input 
+                type="range" 
+                min="0" max="100" step="5" 
+                defaultValue={task.tienDo}
+                onMouseUp={(e) => {
+                  const val = Number((e.target as HTMLInputElement).value);
+                  if (val !== task.tienDo) {
+                    updateMutation.mutate({ id, input: { tienDo: val } });
+                  }
+                }}
+              />
+            )}
+          </div>
         </div>
         <div>
           <p><strong>Người giao:</strong> {getUserName(task.nguoiGiaoId)}</p>

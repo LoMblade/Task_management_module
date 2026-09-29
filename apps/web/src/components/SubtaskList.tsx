@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { useViecCon, useAddViecCon, useUpdateViecCon, useDeleteViecCon } from '../hooks';
+import { LoadingState } from './LoadingState';
+import { ErrorState } from './ErrorState';
+import { EmptyState } from './EmptyState';
 
 export function SubtaskList({ congViecId }: { congViecId: string }) {
-  const { data: response, isLoading } = useViecCon(congViecId);
+  const { data: response, isLoading, error, refetch } = useViecCon(congViecId);
   const addMutation = useAddViecCon();
   const updateMutation = useUpdateViecCon();
   const deleteMutation = useDeleteViecCon();
   
   const [newTitle, setNewTitle] = useState('');
-  const viecCons = response?.data;
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,10 +20,12 @@ export function SubtaskList({ congViecId }: { congViecId: string }) {
     });
   };
 
-  if (isLoading) return <div>Đang tải...</div>;
+  if (isLoading) return <LoadingState />;
+  if (error) return <ErrorState error={error as Error} onRetry={refetch} />;
   
-  const completed = viecCons?.filter((v: any) => v.daXong)?.length || 0;
-  const total = viecCons?.length || 0;
+  const viecCons = response?.data || [];
+  const completed = viecCons.filter((v: any) => v.hoanThanh).length;
+  const total = viecCons.length;
 
   return (
     <div>

@@ -1,17 +1,27 @@
 import React, { useState } from 'react';
 import { useAuth } from '../auth';
+import { useToast } from '../components/Toast';
 
 export function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('123456'); // pre-filled for convenience
-  const [error, setError] = useState('');
   const { login } = useAuth();
+  const toast = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = login(username, password);
-    if (!success) {
-      setError('Tên đăng nhập hoặc mật khẩu không chính xác.');
+    try {
+      const success = await login(username, password);
+      if (success) {
+        toast.success('Đăng nhập thành công');
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 800);
+      } else {
+        toast.error('Lỗi đăng nhập', 'Tên đăng nhập hoặc mật khẩu không chính xác.');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi xác thực', e.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.');
     }
   };
 
@@ -25,7 +35,6 @@ export function LoginPage() {
     }}>
       <div className="card" style={{ width: '400px', padding: '2rem' }}>
         <h2 style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#17211b' }}>Đăng nhập hệ thống</h2>
-        {error && <div style={{ color: 'red', marginBottom: '1rem', padding: '10px', backgroundColor: '#ffebe9', borderRadius: '4px' }}>{error}</div>}
         <form onSubmit={handleLogin}>
           <div className="form-group">
             <label>Tên đăng nhập (VD: u-chi-huy, u-giam-doc)</label>

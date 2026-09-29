@@ -64,3 +64,22 @@ describe('CongViecService', () => {
     expect(result.items.every((item: any) => item.hetHan! < today)).toBe(true);
   });
 });
+
+import { isQuaHan } from '../src/domain.js';
+import type { CongViec } from '@erp/contracts';
+
+describe('isQuaHan mốc nửa đêm giờ Việt Nam', () => {
+  it('xác định chính xác trạng thái quá hạn quanh mốc nửa đêm', () => {
+    const task = { trangThai: 'DANG_LAM', hetHan: '2026-06-10' } as CongViec;
+    
+    // Nếu hôm nay là 2026-06-10 (chưa qua ngày), thì chưa quá hạn
+    expect(isQuaHan(task, '2026-06-10')).toBe(false);
+    
+    // Nếu hôm nay là 2026-06-11 (đã qua nửa đêm sang ngày mới), thì quá hạn
+    expect(isQuaHan(task, '2026-06-11')).toBe(true);
+    
+    // Công việc đã hoàn thành thì không bao giờ quá hạn
+    const taskDone = { trangThai: 'HOAN_THANH', hetHan: '2026-06-10' } as CongViec;
+    expect(isQuaHan(taskDone, '2026-06-11')).toBe(false);
+  });
+});

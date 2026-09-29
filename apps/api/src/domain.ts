@@ -31,6 +31,9 @@ export interface BinhLuanRepository {
 
 export interface DanhMucRepository {
   listNhanVien(congTyId: string): Promise<NhanVien[]>;
+  insertNhanVien(item: NhanVien): Promise<void>;
+  updateNhanVien(congTyId: string, id: string, patch: Partial<NhanVien>): Promise<NhanVien>;
+  deleteNhanVien(congTyId: string, id: string): Promise<void>;
   listDuAn(congTyId: string): Promise<DuAn[]>;
 }
 

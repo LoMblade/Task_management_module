@@ -85,7 +85,10 @@ export class CongViecService {
 
   async update(ctx: AuthContext, id: string, input: any) {
     const task = await this.get(ctx, id);
-    if (task.nguoiGiaoId !== ctx.userId && !task.nguoiThucHienIds.includes(ctx.userId)) {
+    const isGiao = task.nguoiGiaoId === ctx.userId || ctx.isAdmin;
+    const isThucHien = task.nguoiThucHienIds.includes(ctx.userId);
+
+    if (!isGiao && !isThucHien) {
       throw new DomainError('FORBIDDEN', 'Chỉ người giao hoặc người thực hiện được cập nhật');
     }
     
@@ -93,8 +96,7 @@ export class CongViecService {
       throw new DomainError('INVALID_STATE', 'Không thể sửa công việc đã hoàn thành');
     }
 
-    const isThucHien = task.nguoiThucHienIds.includes(ctx.userId) && task.nguoiGiaoId !== ctx.userId;
-    if (isThucHien) {
+    if (!isGiao && isThucHien) {
       const allowed = ['tienDo', 'moTa'];
       for (const key of Object.keys(input)) {
         if (!allowed.includes(key)) throw new DomainError('FORBIDDEN', 'Người thực hiện không được sửa trường này');
@@ -124,7 +126,8 @@ export class CongViecService {
 
   async softDelete(ctx: AuthContext, id: string) {
     const task = await this.get(ctx, id);
-    if (task.nguoiGiaoId !== ctx.userId) throw new DomainError('FORBIDDEN', 'Chỉ người giao được xóa');
+    const isGiao = task.nguoiGiaoId === ctx.userId || ctx.isAdmin;
+    if (!isGiao) throw new DomainError('FORBIDDEN', 'Chỉ người giao được xóa');
     if (task.trangThai === 'HOAN_THANH') throw new DomainError('INVALID_STATE', 'Không thể xóa công việc đã hoàn thành');
     
     await this.congViecRepo.update(ctx.congTyId, id, { deletedAt: this.clock() });
@@ -134,7 +137,7 @@ export class CongViecService {
     const task = await this.get(ctx, id);
     if (task.trangThai === 'HOAN_THANH') throw new DomainError('INVALID_STATE', 'Công việc đã hoàn thành');
 
-    const isGiao = task.nguoiGiaoId === ctx.userId;
+    const isGiao = task.nguoiGiaoId === ctx.userId || ctx.isAdmin;
     const isThucHien = task.nguoiThucHienIds.includes(ctx.userId);
 
     const from = task.trangThai;

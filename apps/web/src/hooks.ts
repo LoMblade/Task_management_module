@@ -132,6 +132,33 @@ export function useNhanVien() {
   });
 }
 
+export function useCreateNhanVien() {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: any) => danhMucApi.createNhanVien(token!, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['nhan-vien'] }),
+  });
+}
+
+export function useUpdateNhanVien() {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: any }) => danhMucApi.updateNhanVien(token!, id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['nhan-vien'] }),
+  });
+}
+
+export function useDeleteNhanVien() {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => danhMucApi.deleteNhanVien(token!, id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['nhan-vien'] }),
+  });
+}
+
 export function useDuAn() {
   const { token } = useAuth();
   return useQuery({

@@ -16,12 +16,29 @@ export const ngaySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Đ
 
 // 2. NhanVien
 export const nhanVienSchema = z.object({
-  id: z.string(),
+  id: z.string().min(1, { message: 'User ID là bắt buộc' }),
   ten: z.string().min(1, { message: 'Tên nhân viên là bắt buộc' }),
   chucVu: z.string(),
   congTyId: z.string(),
+  matKhau: z.string().optional(),
 });
 export type NhanVien = z.infer<typeof nhanVienSchema>;
+
+export const passwordSchema = z.string()
+  .min(8, 'Mật khẩu phải có ít nhất 8 ký tự')
+  .regex(/[A-Z]/, 'Mật khẩu phải chứa ít nhất 1 chữ hoa')
+  .regex(/[a-z]/, 'Mật khẩu phải chứa ít nhất 1 chữ thường')
+  .regex(/[0-9]/, 'Mật khẩu phải chứa ít nhất 1 chữ số')
+  .regex(/[\W_]/, 'Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt');
+
+export const taoNhanVienSchema = nhanVienSchema.omit({ congTyId: true }).extend({
+  matKhau: passwordSchema,
+});
+
+export const loginSchema = z.object({
+  username: z.string().min(1, 'Vui lòng nhập tài khoản'),
+  password: z.string().min(1, 'Vui lòng nhập mật khẩu'),
+});
 
 // 3. DuAn
 export const duAnSchema = z.object({
