@@ -1,12 +1,14 @@
 import React from 'react';
-import { useLichSu } from '../hooks';
-import { USERS } from '../auth';
-
-function getUserName(id: string) {
-  return USERS.find(u => u.id === id)?.ten || id;
-}
+import { useLichSu, useNhanVien } from '../hooks';
 
 export function ChangeHistory({ congViecId }: { congViecId: string }) {
+  const { data: nhanVienResponse } = useNhanVien();
+  const nhanViens = nhanVienResponse?.data || [];
+  
+  function getUserName(id: string) {
+    return nhanViens.find((u: any) => u.id === id)?.ten || id;
+  }
+
   const { data: response, isLoading } = useLichSu(congViecId);
   const lichSu = response?.data;
 

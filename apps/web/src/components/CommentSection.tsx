@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { useBinhLuan, useAddBinhLuan } from '../hooks';
-import { USERS } from '../auth';
-
-function getUserName(id: string) {
-  return USERS.find(u => u.id === id)?.ten || id;
-}
+import { useBinhLuan, useAddBinhLuan, useNhanVien } from '../hooks';
 
 export function CommentSection({ congViecId }: { congViecId: string }) {
+  const { data: nhanVienResponse } = useNhanVien();
+  const nhanViens = nhanVienResponse?.data || [];
+  
+  function getUserName(id: string) {
+    return nhanViens.find((u: any) => u.id === id)?.ten || id;
+  }
+
   const { data: response, isLoading } = useBinhLuan(congViecId);
   const addMutation = useAddBinhLuan();
   const [content, setContent] = useState('');

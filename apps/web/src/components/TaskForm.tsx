@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { useCreateCongViec, useUpdateCongViec } from '../hooks';
-import { USERS } from '../auth';
+import { useCreateCongViec, useUpdateCongViec, useNhanVien } from '../hooks';
 
 export function TaskForm({ task, onClose }: { task?: any, onClose: () => void }) {
   const isEdit = !!task;
   const createMutation = useCreateCongViec();
   const updateMutation = useUpdateCongViec();
+  const { data: nhanVienResponse } = useNhanVien();
+  const USERS = nhanVienResponse?.data || [];
 
   const [formData, setFormData] = useState({
     tenCongViec: task?.tenCongViec || '',

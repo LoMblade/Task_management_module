@@ -1,13 +1,16 @@
 import React from 'react';
 import { StatusBadge } from './StatusBadge';
 import { PriorityBadge } from './PriorityBadge';
-import { USERS } from '../auth';
-
-function getUserName(id: string) {
-  return USERS.find(u => u.id === id)?.ten || id;
-}
+import { useNhanVien } from '../hooks';
 
 export function TaskTable({ tasks, onRowClick }: { tasks: any[], onRowClick: (id: string) => void }) {
+  const { data: nhanVienResponse } = useNhanVien();
+  const nhanViens = nhanVienResponse?.data || [];
+  
+  function getUserName(id: string) {
+    return nhanViens.find((u: any) => u.id === id)?.ten || id;
+  }
+
   return (
     <table className="table">
       <thead>
