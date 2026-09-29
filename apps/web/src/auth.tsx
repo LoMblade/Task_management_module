@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { tokenFor } from './api';
+import { supabase } from './supabase';
 
 type AuthContextType = {
   userId: string | null;
@@ -22,27 +23,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, pass: string) => {
     try {
-      const res = await fetch('http://localhost:3000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password: pass })
-      });
-      const body = await res.json();
+      const { data: users, error } = await supabase.from('NhanVien').select('*');
       
-      if (!res.ok) {
-        throw new Error(body.error?.message || 'Lỗi đăng nhập');
+      if (error) {
+        throw new Error(error.message || 'Lỗi kết nối CSDL');
       }
 
-      const { user, token } = body.data;
-      if (user) {
-        localStorage.setItem('auth_user', JSON.stringify(user));
-        return true;
+      const user = users?.find(u => u.id === username || u.ten === username);
+      
+      if (!user) {
+        throw new Error('Tài khoản không tồn tại');
       }
+
+      // Kiểm tra mật khẩu (demo fallback)
+      if (user.matKhau && user.matKhau !== pass) {
+        throw new Error('Sai mật khẩu');
+      } else if (!user.matKhau && pass !== '123456') {
+        throw new Error('Sai mật khẩu');
+      }
+
+      const { matKhau, ...safeUser } = user;
+      localStorage.setItem('auth_user', JSON.stringify(safeUser));
+      setCurrentUser(safeUser);
+      return true;
     } catch (e) {
       console.error('Lỗi đăng nhập', e);
       throw e; 
     }
-    return false;
   };
 
   const logout = () => {
