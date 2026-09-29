@@ -56,13 +56,60 @@ export const congViecApi = {
     return { data };
   },
   update: async (token: string, id: string, input: any) => {
+    const { userId } = parseToken(token);
+    const { data: oldTask } = await supabase.from('CongViec').select('*').eq('id', id).single();
+    
+    input.capNhatLuc = new Date().toISOString();
     const { data, error } = await supabase.from('CongViec').update(input).eq('id', id).select().single();
     if (error) throw error;
+
+    // Ghi nhận lịch sử nếu cập nhật tiến độ
+    if (input.tienDo !== undefined && oldTask && input.tienDo !== oldTask.tienDo) {
+      await supabase.from('LichSuThayDoi').insert([{
+        congViecId: id,
+        userId: userId || null,
+        truong: 'tienDo',
+        tuGiaTri: String(oldTask.tienDo),
+        sangGiaTri: String(input.tienDo),
+        lyDo: 'Cập nhật tiến độ thi công',
+        taoLuc: new Date().toISOString()
+      }]);
+    }
+
     return { data };
   },
   transition: async (token: string, id: string, body: any) => {
-    const { data, error } = await supabase.from('CongViec').update({ trangThai: body.trangThai }).eq('id', id).select().single();
+    const { userId } = parseToken(token);
+    const { data: oldTask } = await supabase.from('CongViec').select('*').eq('id', id).single();
+
+    const updatePayload: any = { 
+      trangThai: body.trangThai,
+      capNhatLuc: new Date().toISOString()
+    };
+    if (body.trangThai === 'HOAN_THANH') {
+      updatePayload.tienDo = 100;
+    }
+
+    const { data, error } = await supabase.from('CongViec').update(updatePayload).eq('id', id).select().single();
     if (error) throw error;
+
+    // Ghi vết lịch sử chuyển trạng thái kèm lý do
+    let lyDoMacDinh = 'Chuyển trạng thái';
+    if (body.trangThai === 'HOAN_THANH') lyDoMacDinh = 'Duyệt hoàn thành';
+    else if (body.trangThai === 'DANG_LAM' && oldTask?.trangThai === 'CHO_DUYET') lyDoMacDinh = body.lyDo || 'Trả lại yêu cầu làm lại';
+    else if (body.trangThai === 'CHO_DUYET') lyDoMacDinh = 'Gửi phê duyệt';
+    else if (body.trangThai === 'DANG_LAM') lyDoMacDinh = 'Bắt đầu thực hiện';
+
+    await supabase.from('LichSuThayDoi').insert([{
+      congViecId: id,
+      userId: userId || null,
+      truong: 'trangThai',
+      tuGiaTri: oldTask?.trangThai || 'CHUA_BAT_DAU',
+      sangGiaTri: body.trangThai,
+      lyDo: body.lyDo || lyDoMacDinh,
+      taoLuc: new Date().toISOString()
+    }]);
+
     return { data };
   },
   remove: async (token: string, id: string) => {
@@ -71,7 +118,7 @@ export const congViecApi = {
     return { data: { success: true } };
   },
   getHistory: async (token: string, id: string) => {
-    const { data, error } = await supabase.from('LichSuThayDoi').select('*').eq('congViecId', id);
+    const { data, error } = await supabase.from('LichSuThayDoi').select('*').eq('congViecId', id).order('taoLuc', { ascending: false });
     if (error) throw error;
     return { data: data || [] };
   },
@@ -82,11 +129,17 @@ export const congViecApi = {
   },
   addViecCon: async (token: string, id: string, input: any) => {
     input.congViecId = id;
+    if (input.hoanThanh === undefined) input.hoanThanh = false;
     const { data, error } = await supabase.from('ViecCon').insert([input]).select().single();
     if (error) throw error;
     return { data };
   },
   updateViecCon: async (token: string, congViecId: string, viecConId: string, input: any) => {
+    // Map daXong -> hoanThanh if needed
+    if (input.daXong !== undefined && input.hoanThanh === undefined) {
+      input.hoanThanh = input.daXong;
+      delete input.daXong;
+    }
     const { data, error } = await supabase.from('ViecCon').update(input).eq('id', viecConId).select().single();
     if (error) throw error;
     return { data };
@@ -102,7 +155,11 @@ export const congViecApi = {
     return { data: data || [], meta: { page, limit, total: data?.length || 0 } };
   },
   addBinhLuan: async (token: string, id: string, input: any) => {
+    const { userId } = parseToken(token);
     input.congViecId = id;
+    if (!input.userId) input.userId = userId || null;
+    input.taoLuc = new Date().toISOString();
+    input.capNhatLuc = new Date().toISOString();
     const { data, error } = await supabase.from('BinhLuan').insert([input]).select().single();
     if (error) throw error;
     return { data };
