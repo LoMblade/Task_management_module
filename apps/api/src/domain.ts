@@ -1,23 +1,54 @@
-import type { CongViec, TaoCongViec, CapNhatCongViec, CongViecQuery, ChuyenTrangThai } from '@erp/contracts';
+import type { CongViec, LichSuThayDoi, ViecCon, BinhLuan, NhanVien, DuAn } from '@erp/contracts';
 
-export type VaiTro = 'GIAO' | 'THUC_HIEN' | 'THEO_DOI' | 'KHAC';
 export type AuthContext = { userId: string; congTyId: string };
-export type ChangeLog = { userId: string; truong: string; tu: unknown; sang: unknown; luc: string; lyDo?: string };
-export type CongViecRecord = CongViec & { lichSu: ChangeLog[] };
-export type CongViecFilter = CongViecQuery & { congTyId: string; today: string; userId: string };
 
 export interface CongViecRepository {
-  list(filter: CongViecFilter): Promise<{ items: CongViecRecord[]; total: number }>;
-  findById(congTyId: string, id: string): Promise<CongViecRecord | null>;
-  insert(input: CongViecRecord): Promise<CongViecRecord>;
-  update(congTyId: string, id: string, patch: Partial<CongViecRecord>): Promise<CongViecRecord>;
+  list(filter: CongViecFilter): Promise<{ items: CongViec[]; total: number; counts: ScopeCounts }>;
+  findById(congTyId: string, id: string): Promise<CongViec | null>;
+  insert(task: CongViec): Promise<CongViec>;
+  update(congTyId: string, id: string, patch: Partial<CongViec>): Promise<CongViec>;
   nextMa(congTyId: string): Promise<string>;
 }
 
-export type CreateInput = TaoCongViec;
-export type UpdateInput = CapNhatCongViec;
-export type StatusInput = ChuyenTrangThai;
+export interface LichSuRepository {
+  insert(entry: LichSuThayDoi): Promise<LichSuThayDoi>;
+  insertMany(entries: LichSuThayDoi[]): Promise<void>;
+  findByCongViec(congViecId: string): Promise<LichSuThayDoi[]>;
+}
+
+export interface ViecConRepository {
+  findByCongViec(congViecId: string): Promise<ViecCon[]>;
+  insert(item: ViecCon): Promise<ViecCon>;
+  update(congViecId: string, id: string, patch: Partial<ViecCon>): Promise<ViecCon>;
+  delete(congViecId: string, id: string): Promise<void>;
+  countCompleted(congViecId: string): Promise<{ total: number; completed: number }>;
+}
+
+export interface BinhLuanRepository {
+  findByCongViec(congViecId: string, page: number, limit: number): Promise<{ items: BinhLuan[]; total: number }>;
+  insert(item: BinhLuan): Promise<BinhLuan>;
+}
+
+export interface DanhMucRepository {
+  listNhanVien(congTyId: string): Promise<NhanVien[]>;
+  listDuAn(congTyId: string): Promise<DuAn[]>;
+}
+
+export type ScopeCounts = { cuaToi: number; toiGiao: number; theoDoi: number; tatCa: number };
+
+export type CongViecFilter = {
+  congTyId: string; userId: string; today: string;
+  page: number; limit: number;
+  scope: 'CUA_TOI' | 'TOI_GIAO' | 'THEO_DOI' | 'TAT_CA';
+  duAnId?: string; trangThai?: string; uuTien?: string;
+  q?: string; quaHan?: boolean;
+  sort: string;
+};
 
 export function isQuaHan(task: CongViec, today: string): boolean {
   return task.trangThai !== 'HOAN_THANH' && Boolean(task.hetHan && task.hetHan < today);
+}
+
+export class DomainError extends Error {
+  constructor(public code: string, message: string, public status = 400) { super(message); }
 }

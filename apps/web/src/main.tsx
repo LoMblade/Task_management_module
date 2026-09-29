@@ -1,21 +1,44 @@
-import { StrictMode, useState } from 'react';
+import React, { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { TaoCongViec } from '@erp/contracts';
-import { users } from './api';
-import { useCongViecList, useCreateCongViec, useTransitionCongViec } from './hooks';
+import { AuthProvider } from './auth';
+import { Layout } from './components/Layout';
+import { DanhSachPage } from './pages/DanhSachPage';
+import { ChiTietPage } from './pages/ChiTietPage';
 import './styles.css';
 
 const queryClient = new QueryClient();
-const labels: Record<string, string> = { CHUA_BAT_DAU: 'Chưa bắt đầu', DANG_LAM: 'Đang làm', CHO_DUYET: 'Chờ duyệt', HOAN_THANH: 'Hoàn thành' };
-const scopes = [['TAT_CA', 'Tất cả'], ['CUA_TOI', 'Việc của tôi'], ['TOI_GIAO', 'Tôi giao'], ['THEO_DOI', 'Theo dõi']];
 
 function App() {
-  const [userId, setUserId] = useState(users[0].id); const [scope, setScope] = useState('TAT_CA'); const [search, setSearch] = useState(''); const [showForm, setShowForm] = useState(false); const [selected, setSelected] = useState<string | null>(null);
-  const query = useCongViecList(userId, scope, search); const create = useCreateCongViec(userId); const transition = useTransitionCongViec(userId);
-  const selectedTask = query.data?.data.find((item) => item.id === selected);
-  const submit = (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = new FormData(event.currentTarget); const input: TaoCongViec = { ten: String(form.get('ten')), moTa: String(form.get('moTa') || '') || undefined, uuTien: form.get('uuTien') as TaoCongViec['uuTien'], nguoiThucHienIds: [String(form.get('nguoiThucHienId'))], nguoiTheoDoiIds: [], hetHan: String(form.get('hetHan') || '') || undefined }; create.mutate(input, { onSuccess: () => setShowForm(false) }); };
-  return <div className="shell"><header className="topbar"><div className="brand">LONG ĐỖ <span>/ CÔNG VIỆC</span></div><label>Đang đăng nhập là<select className="user-select" value={userId} onChange={(event) => setUserId(event.target.value)}>{users.map((user) => <option value={user.id} key={user.id}>{user.name} · {user.role}</option>)}</select></label></header><main className="content"><div className="eyebrow">Điều hành công trường</div><h1>Công việc</h1><div className="toolbar"><input className="search" placeholder="Tìm theo mã hoặc tên công việc..." value={search} onChange={(event) => setSearch(event.target.value)} /><div className="segment">{scopes.map(([value, text]) => <button className={scope === value ? 'active' : ''} key={value} onClick={() => setScope(value)}>{text}</button>)}</div><button className="primary" onClick={() => setShowForm(true)}>+ Giao việc</button></div><section className="panel">{query.isLoading ? <div className="loading">Đang tải danh sách...</div> : query.isError ? <div className="error">{(query.error as Error).message}<br /><button className="secondary" onClick={() => query.refetch()}>Thử lại</button></div> : !query.data?.data.length ? <div className="empty">Chưa có công việc phù hợp.</div> : <table><thead><tr><th>Mã</th><th>Công việc</th><th>Ưu tiên</th><th>Hạn</th><th>Trạng thái</th></tr></thead><tbody>{query.data.data.map((task) => <tr key={task.id} onClick={() => setSelected(task.id)}><td className="code">{task.ma}</td><td><strong>{task.ten}</strong><br /><span className="muted">{task.duAnId ?? 'Việc chung'}</span></td><td><span className="priority">{task.uuTien}</span></td><td>{task.hetHan ?? 'Chưa đặt hạn'}</td><td><span className={`status ${task.trangThai === 'CHO_DUYET' ? 'wait' : task.trangThai === 'HOAN_THANH' ? 'done' : ''}`}>{labels[task.trangThai]} · {task.tienDo}%</span></td></tr>)}</tbody></table>}</section></main>{showForm && <div className="modal-backdrop"><form className="modal" onSubmit={submit}><h2>Giao công việc</h2><div className="form-grid"><label>Tên công việc<input name="ten" required maxLength={200} /></label><label>Mô tả<textarea name="moTa" rows={3} /></label><label>Người thực hiện<select name="nguoiThucHienId" defaultValue="u-ky-su-1">{users.filter((user) => user.id !== userId).map((user) => <option value={user.id} key={user.id}>{user.name}</option>)}</select></label><label>Ưu tiên<select name="uuTien" defaultValue="BINH_THUONG"><option value="THAP">Thấp</option><option value="BINH_THUONG">Bình thường</option><option value="CAO">Cao</option></select></label><label>Hạn<input type="date" name="hetHan" /></label></div><div className="modal-actions"><button type="button" className="secondary" onClick={() => setShowForm(false)}>Hủy</button><button className="primary" disabled={create.isPending}>Lưu công việc</button></div></form></div>}{selectedTask && <div className="modal-backdrop" onClick={() => setSelected(null)}><article className="modal" onClick={(event) => event.stopPropagation()}><div className="eyebrow">{selectedTask.ma}</div><h2>{selectedTask.ten}</h2><p>{selectedTask.moTa || 'Chưa có mô tả.'}</p><p className="muted">Tiến độ {selectedTask.tienDo}% · Hạn {selectedTask.hetHan || 'chưa đặt'}</p>{selectedTask.trangThai === 'DANG_LAM' && selectedTask.nguoiThucHienIds.includes(userId) && <button className="primary" onClick={() => transition.mutate({ id: selectedTask.id, trangThai: 'CHO_DUYET' }, { onSuccess: () => setSelected(null) })}>Gửi duyệt</button>}{selectedTask.trangThai === 'CHO_DUYET' && selectedTask.nguoiGiaoId === userId && <div className="modal-actions"><button className="secondary" onClick={() => transition.mutate({ id: selectedTask.id, trangThai: 'DANG_LAM', lyDo: 'Cần bổ sung hồ sơ' }, { onSuccess: () => setSelected(null) })}>Trả lại</button><button className="primary" onClick={() => transition.mutate({ id: selectedTask.id, trangThai: 'HOAN_THANH' }, { onSuccess: () => setSelected(null) })}>Duyệt hoàn thành</button></div>}</article></div>}</div>;
+  const [view, setView] = useState<'list' | 'detail'>('list');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const handleOpenDetail = (id: string) => {
+    setSelectedId(id);
+    setView('detail');
+  };
+
+  const handleBackToList = () => {
+    setSelectedId(null);
+    setView('list');
+  };
+
+  return (
+    <Layout>
+      {view === 'list' && <DanhSachPage onOpenDetail={handleOpenDetail} />}
+      {view === 'detail' && selectedId && (
+        <ChiTietPage id={selectedId} onBack={handleBackToList} />
+      )}
+    </Layout>
+  );
 }
 
-createRoot(document.getElementById('root')!).render(<StrictMode><QueryClientProvider client={queryClient}><App /></QueryClientProvider></StrictMode>);
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </QueryClientProvider>
+  </StrictMode>
+);

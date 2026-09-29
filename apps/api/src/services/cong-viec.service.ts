@@ -1,64 +1,237 @@
 import { randomUUID } from 'node:crypto';
-import { taoCongViecSchema, capNhatCongViecSchema, chuyenTrangThaiSchema, capNhatTienDoSchema } from '@erp/contracts';
-import type { AuthContext, CongViecRepository, CreateInput, UpdateInput, StatusInput, CongViecRecord, CongViecFilter } from '../domain.js';
+import type { CongViec, LichSuThayDoi, ViecCon, BinhLuan } from '@erp/contracts';
+import { 
+  AuthContext, CongViecRepository, LichSuRepository, ViecConRepository, 
+  BinhLuanRepository, DanhMucRepository, DomainError, isQuaHan 
+} from '../domain';
 
-export class DomainError extends Error { constructor(public readonly code: string, message: string, public readonly status = 400) { super(message); } }
+function todayVN(): string {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' });
+}
 
 export class CongViecService {
-  constructor(private readonly repository: CongViecRepository, private readonly clock = () => new Date()) {}
-  private now() { return this.clock().toISOString(); }
-  private require(task: CongViecRecord | null): CongViecRecord { if (!task) throw new DomainError('NOT_FOUND', 'Không tìm thấy công việc', 404); return task; }
-  private isAssignee(task: CongViecRecord, userId: string) { return task.nguoiThucHienIds.includes(userId); }
-  private isManager(task: CongViecRecord, userId: string) { return task.nguoiGiaoId === userId; }
+  constructor(
+    private congViecRepo: CongViecRepository,
+    private lichSuRepo: LichSuRepository,
+    private viecConRepo: ViecConRepository,
+    private binhLuanRepo: BinhLuanRepository,
+    private danhMucRepo: DanhMucRepository,
+    private clock: () => string = () => new Date().toISOString()
+  ) {}
 
-  async list(context: AuthContext, query: Omit<CongViecFilter, 'congTyId' | 'userId'>) { return this.repository.list({ ...query, congTyId: context.congTyId, userId: context.userId }); }
-
-  async get(context: AuthContext, id: string) {
-    return this.require(await this.repository.findById(context.congTyId, id));
+  private checkVisibility(ctx: AuthContext, task: CongViec) {
+    if (task.congTyId !== ctx.congTyId) throw new DomainError('NOT_FOUND', 'Không tìm thấy công việc', 404);
+    if (task.nguoiGiaoId !== ctx.userId && !task.nguoiThucHienIds.includes(ctx.userId) && !task.nguoiTheoDoiIds?.includes(ctx.userId)) {
+      throw new DomainError('NOT_FOUND', 'Không tìm thấy công việc', 404);
+    }
   }
 
-  async create(context: AuthContext, input: CreateInput) {
-    const value = taoCongViecSchema.parse(input);
-    const now = this.now();
-    const task: CongViecRecord = { ...value, id: randomUUID(), ma: await this.repository.nextMa(context.congTyId), nguoiGiaoId: context.userId, congTyId: context.congTyId, trangThai: 'CHUA_BAT_DAU', tienDo: 0, taoLuc: now, capNhatLuc: now, lichSu: [] };
-    return this.repository.insert(task);
+  async list(ctx: AuthContext, query: any) {
+    const today = todayVN();
+    const result = await this.congViecRepo.list({
+      congTyId: ctx.congTyId,
+      userId: ctx.userId,
+      today,
+      ...query
+    });
+    
+    result.items = result.items.map(t => ({ ...t, quaHan: isQuaHan(t, today) }));
+    return result;
   }
 
-  async update(context: AuthContext, id: string, input: UpdateInput) {
-    const task = this.require(await this.repository.findById(context.congTyId, id));
-    if (!this.isManager(task, context.userId)) throw new DomainError('FORBIDDEN', 'Chỉ người giao được sửa công việc', 403);
-    if (task.trangThai === 'HOAN_THANH') throw new DomainError('FINAL_STATE', 'Công việc đã hoàn thành không thể sửa');
-    const value = capNhatCongViecSchema.parse(input);
-    const changes = Object.entries(value).filter(([, next]) => next !== undefined).map(([truong, sang]) => ({ userId: context.userId, truong, tu: task[truong as keyof CongViecRecord], sang, luc: this.now() }));
-    return this.repository.update(context.congTyId, id, { ...value, capNhatLuc: this.now(), lichSu: [...task.lichSu, ...changes] });
+  async get(ctx: AuthContext, id: string) {
+    const task = await this.congViecRepo.findById(ctx.congTyId, id);
+    if (!task) throw new DomainError('NOT_FOUND', 'Không tìm thấy công việc', 404);
+    this.checkVisibility(ctx, task);
+    return { ...task, quaHan: isQuaHan(task, todayVN()) };
   }
 
-  async progress(context: AuthContext, id: string, input: unknown) {
-    const task = this.require(await this.repository.findById(context.congTyId, id));
-    if (!this.isAssignee(task, context.userId)) throw new DomainError('FORBIDDEN', 'Bạn không phải người thực hiện công việc', 403);
-    if (task.trangThai === 'HOAN_THANH') throw new DomainError('FINAL_STATE', 'Công việc đã hoàn thành không thể cập nhật');
-    const value = capNhatTienDoSchema.parse(input);
-    if (value.trangThai === 'CHO_DUYET' && value.tienDo !== 100) throw new DomainError('INVALID_STATUS', 'Chuyển chờ duyệt sẽ tự đặt tiến độ 100%');
-    return this.repository.update(context.congTyId, id, { tienDo: value.trangThai === 'CHO_DUYET' ? 100 : value.tienDo, trangThai: value.trangThai ?? (value.tienDo > 0 ? 'DANG_LAM' : 'CHUA_BAT_DAU'), capNhatLuc: this.now() });
+  async create(ctx: AuthContext, input: any) {
+    const ma = await this.congViecRepo.nextMa(ctx.congTyId);
+    const now = this.clock();
+    const task: CongViec = {
+      id: randomUUID(),
+      congTyId: ctx.congTyId,
+      ma,
+      ten: input.ten,
+      moTa: input.moTa,
+      duAnId: input.duAnId,
+      nguoiGiaoId: ctx.userId,
+      nguoiThucHienIds: input.nguoiThucHienIds || [],
+      nguoiTheoDoiIds: input.nguoiTheoDoiIds || [],
+      trangThai: 'CHUA_BAT_DAU',
+      uuTien: input.uuTien || 'BINH_THUONG',
+      batDau: input.batDau,
+      hetHan: input.hetHan,
+      tienDo: 0,
+      taoLuc: now,
+      capNhatLuc: now
+    };
+    
+    const created = await this.congViecRepo.insert(task);
+    await this.lichSuRepo.insert({
+      id: randomUUID(),
+      congViecId: created.id,
+      userId: ctx.userId,
+      truong: 'trangThai',
+      tuGiaTri: undefined,
+      sangGiaTri: 'CHUA_BAT_DAU',
+      taoLuc: now
+    });
+    return created;
   }
 
-  async transition(context: AuthContext, id: string, input: StatusInput) {
-    const task = this.require(await this.repository.findById(context.congTyId, id));
-    const value = chuyenTrangThaiSchema.parse(input);
-    if (value.trangThai === 'HOAN_THANH' || (task.trangThai === 'CHO_DUYET' && value.trangThai === 'DANG_LAM')) {
-      if (!this.isManager(task, context.userId)) throw new DomainError('FORBIDDEN', 'Chỉ người giao được duyệt hoặc trả lại', 403);
-      if (value.trangThai === 'DANG_LAM' && !value.lyDo) throw new DomainError('REASON_REQUIRED', 'Trả lại bắt buộc phải ghi lý do');
-    } else if (!this.isAssignee(task, context.userId)) throw new DomainError('FORBIDDEN', 'Bạn không có quyền chuyển trạng thái', 403);
-    const allowed = task.trangThai === 'CHUA_BAT_DAU' && value.trangThai === 'DANG_LAM' || task.trangThai === 'DANG_LAM' && value.trangThai === 'CHO_DUYET' || task.trangThai === 'CHO_DUYET' && ['DANG_LAM', 'HOAN_THANH'].includes(value.trangThai);
-    if (!allowed) throw new DomainError('INVALID_STATUS', 'Luồng trạng thái không hợp lệ');
-    const now = this.now();
-    return this.repository.update(context.congTyId, id, { trangThai: value.trangThai, tienDo: value.trangThai === 'CHO_DUYET' || value.trangThai === 'HOAN_THANH' ? 100 : task.tienDo, capNhatLuc: now, lichSu: [...task.lichSu, { userId: context.userId, truong: 'trangThai', tu: task.trangThai, sang: value.trangThai, luc: now, lyDo: value.lyDo }] });
+  async update(ctx: AuthContext, id: string, input: any) {
+    const task = await this.get(ctx, id);
+    if (task.nguoiGiaoId !== ctx.userId && !task.nguoiThucHienIds.includes(ctx.userId)) {
+      throw new DomainError('FORBIDDEN', 'Chỉ người giao hoặc người thực hiện được cập nhật');
+    }
+    
+    if (task.trangThai === 'HOAN_THANH') {
+      throw new DomainError('INVALID_STATE', 'Không thể sửa công việc đã hoàn thành');
+    }
+
+    const isThucHien = task.nguoiThucHienIds.includes(ctx.userId) && task.nguoiGiaoId !== ctx.userId;
+    if (isThucHien) {
+      const allowed = ['tienDo', 'moTa'];
+      for (const key of Object.keys(input)) {
+        if (!allowed.includes(key)) throw new DomainError('FORBIDDEN', 'Người thực hiện không được sửa trường này');
+      }
+    }
+
+    const history: LichSuThayDoi[] = [];
+    const now = this.clock();
+    for (const key of Object.keys(input)) {
+      if ((task as any)[key] !== input[key]) {
+        history.push({
+          id: randomUUID(),
+          congViecId: id,
+          userId: ctx.userId,
+          truong: key,
+          tuGiaTri: String((task as any)[key] || ''),
+          sangGiaTri: String(input[key] || ''),
+          taoLuc: now
+        });
+      }
+    }
+
+    if (history.length) await this.lichSuRepo.insertMany(history);
+    
+    return await this.congViecRepo.update(ctx.congTyId, id, input);
   }
 
-  async softDelete(context: AuthContext, id: string) {
-    const task = this.require(await this.repository.findById(context.congTyId, id));
-    if (!this.isManager(task, context.userId)) throw new DomainError('FORBIDDEN', 'Chỉ người giao được xóa công việc', 403);
-    if (task.trangThai === 'HOAN_THANH') throw new DomainError('FINAL_STATE', 'Không thể xóa công việc đã hoàn thành');
-    return this.repository.update(context.congTyId, id, { deletedAt: this.now(), capNhatLuc: this.now() });
+  async softDelete(ctx: AuthContext, id: string) {
+    const task = await this.get(ctx, id);
+    if (task.nguoiGiaoId !== ctx.userId) throw new DomainError('FORBIDDEN', 'Chỉ người giao được xóa');
+    if (task.trangThai === 'HOAN_THANH') throw new DomainError('INVALID_STATE', 'Không thể xóa công việc đã hoàn thành');
+    
+    await this.congViecRepo.update(ctx.congTyId, id, { deletedAt: this.clock() });
+  }
+
+  async transition(ctx: AuthContext, id: string, payload: { trangThai: string, lyDo?: string }) {
+    const task = await this.get(ctx, id);
+    if (task.trangThai === 'HOAN_THANH') throw new DomainError('INVALID_STATE', 'Công việc đã hoàn thành');
+
+    const isGiao = task.nguoiGiaoId === ctx.userId;
+    const isThucHien = task.nguoiThucHienIds.includes(ctx.userId);
+
+    const from = task.trangThai;
+    const to = payload.trangThai;
+    
+    const patch: Partial<CongViec> = { trangThai: to as any };
+
+    if (from === 'CHUA_BAT_DAU' && to === 'DANG_LAM') {
+      if (!isThucHien) throw new DomainError('FORBIDDEN', 'Chỉ người thực hiện mới được bắt đầu');
+    } else if (from === 'DANG_LAM' && to === 'CHO_DUYET') {
+      if (!isThucHien) throw new DomainError('FORBIDDEN', 'Chỉ người thực hiện mới được gửi duyệt');
+      patch.tienDo = 100;
+    } else if (from === 'CHO_DUYET' && to === 'HOAN_THANH') {
+      if (!isGiao) throw new DomainError('FORBIDDEN', 'Chỉ người giao được duyệt hoàn thành', 403);
+    } else if (from === 'CHO_DUYET' && to === 'DANG_LAM') {
+      if (!isGiao) throw new DomainError('FORBIDDEN', 'Chỉ người giao được trả lại', 403);
+      if (!payload.lyDo) throw new DomainError('INVALID_INPUT', 'Cần có lý do từ chối');
+    } else {
+      throw new DomainError('INVALID_STATE', `Chuyển trạng thái từ ${from} sang ${to} không hợp lệ`);
+    }
+
+    const updated = await this.congViecRepo.update(ctx.congTyId, id, patch);
+    await this.lichSuRepo.insert({
+      id: randomUUID(),
+      congViecId: id,
+      userId: ctx.userId,
+      truong: 'trangThai',
+      tuGiaTri: from,
+      sangGiaTri: to,
+      lyDo: payload.lyDo,
+      taoLuc: this.clock()
+    });
+
+    return updated;
+  }
+
+  async getHistory(ctx: AuthContext, id: string) {
+    await this.get(ctx, id);
+    return await this.lichSuRepo.findByCongViec(id);
+  }
+
+  async listViecCon(ctx: AuthContext, id: string) {
+    await this.get(ctx, id);
+    return await this.viecConRepo.findByCongViec(id);
+  }
+
+  async addViecCon(ctx: AuthContext, id: string, input: { ten: string }) {
+    await this.get(ctx, id);
+    const existing = await this.viecConRepo.findByCongViec(id);
+    const thuTu = existing.length > 0 ? Math.max(...existing.map(v => v.thuTu)) + 1 : 1;
+    
+    const now = this.clock();
+    return await this.viecConRepo.insert({
+      id: randomUUID(),
+      congViecId: id,
+      ten: input.ten,
+      hoanThanh: false,
+      thuTu,
+      taoLuc: now,
+      capNhatLuc: now
+    });
+  }
+
+  async updateViecCon(ctx: AuthContext, id: string, vcId: string, patch: any) {
+    await this.get(ctx, id);
+    const updated = await this.viecConRepo.update(id, vcId, patch);
+    
+    // Auto update parent progress
+    if (patch.hoanThanh !== undefined) {
+      const counts = await this.viecConRepo.countCompleted(id);
+      if (counts.total > 0) {
+        const tienDo = Math.round((counts.completed / counts.total) * 100);
+        await this.congViecRepo.update(ctx.congTyId, id, { tienDo });
+      }
+    }
+    
+    return updated;
+  }
+
+  async deleteViecCon(ctx: AuthContext, id: string, vcId: string) {
+    await this.get(ctx, id);
+    await this.viecConRepo.delete(id, vcId);
+  }
+
+  async listBinhLuan(ctx: AuthContext, id: string, page: number, limit: number) {
+    await this.get(ctx, id);
+    return await this.binhLuanRepo.findByCongViec(id, page, limit);
+  }
+
+  async addBinhLuan(ctx: AuthContext, id: string, input: { noiDung: string }) {
+    await this.get(ctx, id);
+    const now = this.clock();
+    return await this.binhLuanRepo.insert({
+      id: randomUUID(),
+      congViecId: id,
+      userId: ctx.userId,
+      noiDung: input.noiDung,
+      taoLuc: now,
+      capNhatLuc: now
+    });
   }
 }
