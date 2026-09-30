@@ -10,9 +10,11 @@ function cleanUndefined(obj: any) {
 
 export class MongoCongViecRepository implements CongViecRepository {
   private col: Collection<CongViec>;
+  private db: Db;
 
   constructor(db: Db) {
     this.col = db.collection<CongViec>('cong_viec');
+    this.db = db;
   }
 
   async setupIndexes() {
@@ -28,13 +30,13 @@ export class MongoCongViecRepository implements CongViecRepository {
   private buildVisibilityFilter(filter: CongViecFilter): Filter<CongViec> {
     const base: Filter<CongViec> = { congTyId: filter.congTyId, deletedAt: { $exists: false } };
     
-    if (!filter.isAdmin) {
-      base.$or = [
-        { nguoiGiaoId: filter.userId },
-        { nguoiThucHienIds: filter.userId },
-        { nguoiTheoDoiIds: filter.userId }
-      ];
-    }
+    // Đề bài không cho phép Admin vượt quyền truy cập công việc của người khác
+    // Chỉ những người có liên quan (Giao, Thực hiện, Theo dõi) mới được thấy.
+    base.$or = [
+      { nguoiGiaoId: filter.userId },
+      { nguoiThucHienIds: filter.userId },
+      { nguoiTheoDoiIds: filter.userId }
+    ];
     
     return base;
   }
@@ -103,10 +105,14 @@ export class MongoCongViecRepository implements CongViecRepository {
   }
 
   async nextMa(congTyId: string): Promise<string> {
-    const last = await this.col.find({ congTyId }).sort({ taoLuc: -1 }).limit(1).toArray();
-    if (!last.length) return 'CV-1001';
-    const match = last[0].ma.match(/CV-(\d+)/);
-    const num = match ? parseInt(match[1], 10) + 1 : 1001;
+    const counter = await this.db.collection('counters').findOneAndUpdate(
+      { _id: congTyId },
+      { $inc: { seq: 1 } },
+      { upsert: true, returnDocument: 'after' }
+    ) as any;
+    // mongodb v6 returns the document directly. Older versions return { value: doc }
+    const doc = counter && 'value' in counter ? counter.value : counter;
+    const num = 1000 + (doc?.seq || 1);
     return `CV-${num}`;
   }
 }

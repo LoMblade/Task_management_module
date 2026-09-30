@@ -23,9 +23,9 @@ Dưới đây là 4 tình huống làm việc đáng kể nhất với AI trong 
 - **Phát hiện lỗi & Quyết định**: **BỎ VÀ YÊU CẦU LÀM LẠI**. Tôi chạy API và MongoDB văng lỗi `MongoServerError: cannot index parallel arrays`. Nguyên nhân là MongoDB không cho phép tạo 1 compound index chứa ĐỒNG THỜI 2 trường mảng (arrays) vì nó sẽ gây bùng nổ hoán vị (Cartesian product).
 - **Kiểm tra**: Tôi yêu cầu AI tách ra làm 2 index riêng biệt: 1 cái index theo `nguoiThucHienIds` và 1 cái theo `nguoiTheoDoiIds`. Khởi động lại Server, console báo connect MongoDB và build index thành công.
 
-## 4. Làm tính năng Toast Notification (UI/UX)
-- **Tôi muốn gì**: Bỏ các dòng chữ đỏ báo lỗi cứng nhắc khi Login hoặc Form submit, thay bằng các khối thông báo (Toast) tự động nảy ra ở góc trên bên phải màn hình (tương tự thiết kế mẫu).
-- **Tôi ra lệnh thế nào**: *"Tôi đưa cho bạn 1 ảnh mẫu. Bạn hãy thiết kế cho tôi 1 hệ thống Toast Message. Không dùng thư viện ngoài. Dùng Context API của React để truyền hàm showToast. Khi đăng nhập thành công hay lỗi, hãy nảy Toast ra ở góc phải màn hình, tự động tắt sau 4 giây."*
-- **AI trả về gì**: AI viết ra `ToastContext`, `ToastProvider` với CSS `@keyframes slideIn`, và tích hợp cực kỳ chính xác vào luồng login.
-- **Quyết định**: **Nhận**. Code rất sáng tạo, không phụ thuộc thư viện, keyframe animation mượt.
-- **Kiểm tra**: Bật trình duyệt, cố tình gõ sai mật khẩu ở `/auth/login`, một toast màu đỏ hiện ra ở góc phải, sau đó 4s biến mất. Sau đó đăng nhập đúng, toast xanh hiện ra.
+## 4. Lỗi Kiến trúc (Frontend gọi trực tiếp DB thay vì API) (AI ĐỀ XUẤT SAI VÀ TÔI PHÁT HIỆN RA)
+- **Tôi muốn gì**: Kết nối dữ liệu vào giao diện React để hiển thị danh sách công việc.
+- **Tôi ra lệnh thế nào**: *"Hãy lấy dữ liệu danh sách công việc từ database và hiển thị ra Table trong React."*
+- **AI trả về gì**: AI đề xuất sử dụng trực tiếp Supabase-js client ngay trong `apps/web/src/api.ts` (ví dụ `supabase.from('CongViec').select('*')`) để query lấy dữ liệu cho nhanh.
+- **Phát hiện lỗi & Quyết định**: **SỬA LẠI HOÀN TOÀN**. Tôi nhận ra điều này vi phạm nghiêm trọng kiến trúc hệ thống (Route -> Service -> Repository). Việc frontend bypass Fastify API để gọi thẳng vào DB sẽ làm phá vỡ toàn bộ business logic, quyền truy cập và bảo mật đã viết ở backend.
+- **Kiểm tra**: Tôi kiểm tra lại `CLAUDE.md` và kiến trúc yêu cầu. Sau đó yêu cầu AI chuyển thành mô hình chuẩn: Page -> Hook -> API Client (`fetch`) -> Fastify API (`http://localhost:3000`). Xóa bỏ hoàn toàn Supabase client khỏi dự án frontend. Đảm bảo UI phải giao tiếp qua backend Rest API.

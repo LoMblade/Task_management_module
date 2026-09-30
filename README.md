@@ -35,18 +35,18 @@ pnpm test
 ## Trả lời Câu hỏi thiết kế
 
 ### 1. Quá hạn: Lưu DB hay tính ra khi đọc? Lọc phân trang truy vấn thế nào?
-- **Tính ra khi đọc & Query động**: Không nên lưu `QUA_HAN` như một trạng thái cứng trong DB (vì sẽ phải dùng Cronjob chạy lúc 00:00, rất dễ miss job hoặc lag db).
+- **Tính ra khi đọc & Query động** Không nên lưu `QUA_HA:N` như một trạng thái cứng trong DB (vì sẽ phải dùng Cronjob chạy lúc 00:00, rất dễ miss job hoặc lag db).
 - **Lọc có phân trang**: Để lọc phân trang được, thay vì lấy ra hết rồi filter mảng, ta build MongoDB Query kết hợp giờ VN: 
   `{ trangThai: { $ne: 'HOAN_THANH' }, hetHan: { $lt: <Ngày giờ hiện tại theo VN> } }`
   Sau đó truyền vào Mongo `skip` và `limit` để phân trang như bình thường. API sẽ tự gán thêm field ảo `isQuaHan` khi map dữ liệu ra.
 
 ### 2. Mã CV: Hai người bấm tạo cùng một lúc làm sao không trùng?
 Sử dụng mô hình Sequence Counter (Atomic) của MongoDB. Thay vì đếm tổng số bản ghi, ta tạo một collection `counters`.
-Khi tạo mới, dùng hàm `findOneAndUpdate({ _id: congTyId }, { $inc: { seq: 1 } })`. Lệnh này của MongoDB là **Atomic**, nó sẽ lock row ở mức DB trong tích tắc, trả về số thứ tự độc nhất (VD: 1, 2, 3), đảm bảo không bao giờ có 2 người bị trùng mã hay nhảy số lung tung.
+Khi tạo mới, dùng hàm `findOneAndUpdate({ _id: congTyId }, { $inc: { seq: 1 } })`. Lệnh này của MongoDB là **Atomic**, nó trả về số thứ tự độc nhất (VD: 1, 2, 3). Ưu tiên đảm bảo uniqueness và concurrency safety. Sequence có thể có gap (bị nhảy số) nếu transaction tạo công việc thất bại, nhưng quan trọng nhất là không bao giờ trùng mã. Không nên dùng count + 1 vì rất dễ dẫn đến collision (trùng mã).
 
 ### 3. Lịch sử thay đổi: Lưu ở đâu, đổi 5 trường ghi mấy dòng?
 Lưu ở 1 Collection độc lập `lich_su_thay_doi` để không làm phình Data của bảng `cong_viec`.
-Lưu theo chuẩn **EAV (Entity - Attribute - Value)**, tức là mỗi trường thay đổi tương ứng 1 dòng: `{ truong, tuGiaTri, sangGiaTri, taoLuc, userId }`.
+Mỗi thay đổi field được lưu thành một audit entry riêng: `{ truong, tuGiaTri, sangGiaTri, taoLuc, userId }`.
 -> **Đổi 5 trường ghi 5 dòng**. Ưu điểm: Hiển thị giao diện "Ai đã đổi [Tiến độ] từ [10%] thành [50%]" cực kỳ dễ dàng, và có thể filter lịch sử theo đúng trường cần xem.
 
 ### 4. Tương thích ngược: App cũ gọi thiếu trường loaiCongViec

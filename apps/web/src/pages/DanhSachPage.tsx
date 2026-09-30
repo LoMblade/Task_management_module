@@ -76,8 +76,10 @@ export function DanhSachPage({ onOpenDetail }: { onOpenDetail: (id: string, mode
             <TaskTable tasks={data!.data} onRowClick={onOpenDetail} />
             <Pagination 
               page={filters.page} 
-              totalPages={Math.ceil((data!.meta?.total || 0) / filters.limit)} 
+              limit={filters.limit}
+              total={data!.meta?.total || 0} 
               onPageChange={(p) => setFilters({ ...filters, page: p })} 
+              onLimitChange={(l) => setFilters({ ...filters, limit: l, page: 1 })}
             />
           </>
         )}

@@ -15,8 +15,8 @@
 - **ID**: Mọi `id` trả về và sử dụng phải là String.
 
 ## LUẬT NGHIỆP VỤ (BUSINESS RULES)
-- **Quyền theo công ty**: MỌI query MongoDB (`find`, `update`, `delete`) BẮT BUỘC phải kèm filter `{ congTyId: ctx.congTyId }` lấy từ Token. Không bao giờ tin tưởng client.
-- **Xóa mềm (Soft Delete)**: KHÔNG DÙNG lệnh `deleteOne/deleteMany`. Luôn Update field `deletedAt = new Date()`. Khi query danh sách, filter `deletedAt: { $exists: false }`.
+- **Quyền theo công ty**: MỌI query MongoDB (`find`, `update`, `delete`) kể cả collection phụ (ví dụ lịch sử) BẮT BUỘC phải kèm `{ congTyId: ctx.congTyId }` hoặc lọc chặt chẽ qua relation.
+- **Xóa mềm (Soft Delete)**: Đối với `CongViec`, KHÔNG DÙNG lệnh `deleteOne/deleteMany` mà dùng `deletedAt = new Date()`. Các danh mục phụ (nhân viên, subtask) không thuộc nghiệp vụ mềm có thể hard delete.
 - **Múi giờ & Quá hạn**: Mọi xử lý ngày tháng (đặc biệt tính "Quá hạn") phải lấy theo mốc 00:00 của giờ Việt Nam (`Asia/Ho_Chi_Minh`).
 - **Lưu Database**: KHÔNG ĐƯỢC ghi trường `undefined` vào MongoDB. Nếu không có dữ liệu, dùng `delete object[key]` hoặc set `null`.
 - **Trạng thái**: Việc chuyển trạng thái từ `CHO_DUYET` -> `DANG_LAM` bắt buộc phải có lý do (lưu vào comment hoặc history).

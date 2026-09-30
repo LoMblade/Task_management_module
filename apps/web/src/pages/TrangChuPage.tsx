@@ -15,7 +15,7 @@ export function TrangChuPage() {
   if (isLoading) return <LoadingState />;
   if (error) return <ErrorState error={error as Error} onRetry={refetch} />;
   
-  const tasks = response?.data || [];
+  const tasks: any[] = response?.data || [];
   const nhanViens = nhanVienResponse?.data || [];
   const duAns = duAnResponse?.data || [];
 
