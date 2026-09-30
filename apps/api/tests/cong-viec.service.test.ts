@@ -9,8 +9,8 @@ import {
 import { CongViecService } from '../src/services/cong-viec.service.js';
 import { seedDb } from '../src/seed.js';
 
-const manager = { userId: 'u-chi-huy', congTyId: 'ct-long-do' };
-const assignee = { userId: 'u-ky-su-1', congTyId: 'ct-long-do' };
+const manager = { userId: 'chihuy', congTyId: 'ct-long-do' };
+const assignee = { userId: 'kysu1', congTyId: 'ct-long-do' };
 
 async function fixture() {
   const congViecRepo = new MemoryCongViecRepository();
@@ -36,8 +36,8 @@ describe('CongViecService', () => {
     const { service, activeTask } = await fixture();
     // activeTask is HOAN_THANH, let's use another task
     const result = await service.list(manager, { page: 1, limit: 20, scope: 'TAT_CA', sort: 'hetHan' });
-    const task = result.items.find((item: any) => item.ma === 'CV-0004')!; // CHUA_BAT_DAU, assignee: u-to-doi-2
-    const todoAssignee = { userId: 'u-to-doi-2', congTyId: 'ct-long-do' };
+    const task = result.items.find((item: any) => item.ma === 'CV-0004')!; // CHUA_BAT_DAU, assignee: todoi2
+    const todoAssignee = { userId: 'todoi2', congTyId: 'ct-long-do' };
     
     await service.transition(todoAssignee, task.id, { trangThai: 'DANG_LAM' });
     await service.transition(todoAssignee, task.id, { trangThai: 'CHO_DUYET' });
@@ -46,8 +46,8 @@ describe('CongViecService', () => {
 
   it('bat buoc ly do khi nguoi giao tra lai', async () => {
     const { service, pendingTask } = await fixture();
-    // pendingTask is CHO_DUYET. manager is 'u-chi-huy'
-    const pendingManager = { userId: 'u-chi-huy', congTyId: 'ct-long-do' };
+    // pendingTask is CHO_DUYET. manager is 'chihuy'
+    const pendingManager = { userId: 'chihuy', congTyId: 'ct-long-do' };
     await expect(service.transition(pendingManager, pendingTask.id, { trangThai: 'DANG_LAM' })).rejects.toMatchObject({ code: 'INVALID_INPUT' });
   });
 

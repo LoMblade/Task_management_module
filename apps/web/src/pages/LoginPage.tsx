@@ -31,9 +31,10 @@ export function LoginPage() {
 
   const demoAccounts = [
     { label: 'Tổng Giám đốc (Admin)', user: 'admin', role: 'Full quyền hệ thống' },
-    { label: 'Chỉ huy trưởng', user: 'u-chi-huy', role: 'Quản lý hiện trường' },
-    { label: 'Trưởng phòng Kỹ thuật', user: 'u-truong-phong', role: 'Phê duyệt hồ sơ' },
-    { label: 'Kế toán công trình', user: 'u-ke-toan', role: 'Thanh quyết toán' }
+    { label: 'Chỉ huy trưởng', user: 'chihuy', role: 'Quản lý hiện trường' },
+    { label: 'Trưởng phòng Kỹ thuật', user: 'truongphong', role: 'Phê duyệt hồ sơ' },
+    { label: 'Kỹ sư xây dựng', user: 'kysu1', role: 'Thi công trực tiếp' },
+    { label: 'Kế toán công trình', user: 'ketoan', role: 'Thanh quyết toán' }
   ];
 
   return (
