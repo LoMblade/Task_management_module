@@ -15,29 +15,55 @@ export function tokenFor(userId: string, chucVu?: string): string {
 
 export const congViecApi = {
   list: async (token: string, params: URLSearchParams) => {
-    const { userId } = parseToken(token);
+    const { userId, isAdmin } = parseToken(token);
     const scope = params.get('scope') || 'TAT_CA';
     
     const { data: allTasks, error } = await supabase.from('CongViec').select('*');
     if (error) throw error;
     
-    const tasks = allTasks || [];
-    const cuaToi = tasks.filter(t => t.nguoiThucHienIds?.includes(userId)).length;
-    const toiGiao = tasks.filter(t => t.nguoiGiaoId === userId).length;
-    const theoDoi = tasks.filter(t => t.nguoiTheoDoiIds?.includes(userId)).length;
-    const tatCa = tasks.length;
+    // Lọc bỏ các công việc đã xóa mềm (deletedAt)
+    const activeTasks = (allTasks || []).filter(t => !t.deletedAt);
     
-    let filtered = tasks;
-    if (scope === 'CUA_TOI') filtered = tasks.filter(t => t.nguoiThucHienIds?.includes(userId));
-    if (scope === 'TOI_GIAO') filtered = tasks.filter(t => t.nguoiGiaoId === userId);
-    if (scope === 'THEO_DOI') filtered = tasks.filter(t => t.nguoiTheoDoiIds?.includes(userId));
+    const cuaToi = activeTasks.filter(t => t.nguoiThucHienIds?.includes(userId)).length;
+    const toiGiao = activeTasks.filter(t => t.nguoiGiaoId === userId).length;
+    const theoDoi = activeTasks.filter(t => t.nguoiTheoDoiIds?.includes(userId)).length;
+    const tatCa = isAdmin ? activeTasks.length : activeTasks.filter(t => 
+      t.nguoiGiaoId === userId || 
+      t.nguoiThucHienIds?.includes(userId) || 
+      t.nguoiTheoDoiIds?.includes(userId)
+    ).length;
+    
+    let filtered = activeTasks;
+    if (scope === 'CUA_TOI') filtered = activeTasks.filter(t => t.nguoiThucHienIds?.includes(userId));
+    else if (scope === 'TOI_GIAO') filtered = activeTasks.filter(t => t.nguoiGiaoId === userId);
+    else if (scope === 'THEO_DOI') filtered = activeTasks.filter(t => t.nguoiTheoDoiIds?.includes(userId));
+    else if (scope === 'TAT_CA' && !isAdmin) {
+      filtered = activeTasks.filter(t => 
+        t.nguoiGiaoId === userId || 
+        t.nguoiThucHienIds?.includes(userId) || 
+        t.nguoiTheoDoiIds?.includes(userId)
+      );
+    }
     
     const duAnId = params.get('duAnId');
     if (duAnId === 'viec-chung') filtered = filtered.filter(t => !t.duAnId);
     else if (duAnId) filtered = filtered.filter(t => t.duAnId === duAnId);
     
     const trangThai = params.get('trangThai');
-    if (trangThai) filtered = filtered.filter(t => t.trangThai === trangThai);
+    if (trangThai === 'QUA_HAN') {
+      const now = new Date();
+      filtered = filtered.filter(t => t.hetHan && new Date(t.hetHan) < now && t.trangThai !== 'HOAN_THANH');
+    } else if (trangThai) {
+      filtered = filtered.filter(t => t.trangThai === trangThai);
+    }
+
+    const search = params.get('search')?.toLowerCase().trim();
+    if (search) {
+      filtered = filtered.filter(t => 
+        t.ten?.toLowerCase().includes(search) || 
+        t.ma?.toLowerCase().includes(search)
+      );
+    }
     
     return {
       data: filtered,
@@ -86,7 +112,8 @@ export const congViecApi = {
       trangThai: body.trangThai,
       capNhatLuc: new Date().toISOString()
     };
-    if (body.trangThai === 'HOAN_THANH') {
+    // Yêu cầu: Chuyển sang CHO_DUYET thì tiến độ tự thành 100%
+    if (body.trangThai === 'CHO_DUYET' || body.trangThai === 'HOAN_THANH') {
       updatePayload.tienDo = 100;
     }
 
@@ -97,7 +124,7 @@ export const congViecApi = {
     let lyDoMacDinh = 'Chuyển trạng thái';
     if (body.trangThai === 'HOAN_THANH') lyDoMacDinh = 'Duyệt hoàn thành';
     else if (body.trangThai === 'DANG_LAM' && oldTask?.trangThai === 'CHO_DUYET') lyDoMacDinh = body.lyDo || 'Trả lại yêu cầu làm lại';
-    else if (body.trangThai === 'CHO_DUYET') lyDoMacDinh = 'Gửi phê duyệt';
+    else if (body.trangThai === 'CHO_DUYET') lyDoMacDinh = 'Gửi phê duyệt (Tự động cập nhật 100% tiến độ)';
     else if (body.trangThai === 'DANG_LAM') lyDoMacDinh = 'Bắt đầu thực hiện';
 
     await supabase.from('LichSuThayDoi').insert([{
@@ -113,7 +140,12 @@ export const congViecApi = {
     return { data };
   },
   remove: async (token: string, id: string) => {
-    const { error } = await supabase.from('CongViec').delete().eq('id', id);
+    // Yêu cầu: Xóa là xóa mềm (deletedAt), không xóa được việc đã hoàn thành
+    const { data: task } = await supabase.from('CongViec').select('trangThai').eq('id', id).single();
+    if (task?.trangThai === 'HOAN_THANH') {
+      throw new Error('Không thể xóa công việc đã hoàn thành');
+    }
+    const { error } = await supabase.from('CongViec').update({ deletedAt: new Date().toISOString() }).eq('id', id);
     if (error) throw error;
     return { data: { success: true } };
   },
@@ -132,21 +164,47 @@ export const congViecApi = {
     if (input.hoanThanh === undefined) input.hoanThanh = false;
     const { data, error } = await supabase.from('ViecCon').insert([input]).select().single();
     if (error) throw error;
+
+    // Tự động tính lại tiến độ việc cha theo việc con
+    const { data: subtasks } = await supabase.from('ViecCon').select('hoanThanh').eq('congViecId', id);
+    if (subtasks && subtasks.length > 0) {
+      const completed = subtasks.filter(s => s.hoanThanh).length;
+      const newProgress = Math.round((completed / subtasks.length) * 100);
+      await supabase.from('CongViec').update({ tienDo: newProgress }).eq('id', id);
+    }
+
     return { data };
   },
   updateViecCon: async (token: string, congViecId: string, viecConId: string, input: any) => {
-    // Map daXong -> hoanThanh if needed
     if (input.daXong !== undefined && input.hoanThanh === undefined) {
       input.hoanThanh = input.daXong;
       delete input.daXong;
     }
     const { data, error } = await supabase.from('ViecCon').update(input).eq('id', viecConId).select().single();
     if (error) throw error;
+
+    // Yêu cầu (Bonus): tiến độ việc cha tự tính theo việc con
+    const { data: subtasks } = await supabase.from('ViecCon').select('hoanThanh').eq('congViecId', congViecId);
+    if (subtasks && subtasks.length > 0) {
+      const completed = subtasks.filter(s => s.hoanThanh).length;
+      const newProgress = Math.round((completed / subtasks.length) * 100);
+      await supabase.from('CongViec').update({ tienDo: newProgress }).eq('id', congViecId);
+    }
+
     return { data };
   },
   deleteViecCon: async (token: string, congViecId: string, viecConId: string) => {
     const { error } = await supabase.from('ViecCon').delete().eq('id', viecConId);
     if (error) throw error;
+
+    // Tự động tính lại tiến độ việc cha sau khi xóa việc con
+    const { data: subtasks } = await supabase.from('ViecCon').select('hoanThanh').eq('congViecId', congViecId);
+    if (subtasks && subtasks.length > 0) {
+      const completed = subtasks.filter(s => s.hoanThanh).length;
+      const newProgress = Math.round((completed / subtasks.length) * 100);
+      await supabase.from('CongViec').update({ tienDo: newProgress }).eq('id', congViecId);
+    }
+
     return { data: { success: true } };
   },
   listBinhLuan: async (token: string, id: string, page = 1, limit = 10) => {
