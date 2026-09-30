@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { tokenFor } from './api';
-import { supabase } from './supabase';
+import { tokenFor, danhMucApi } from './api';
 
 type AuthContextType = {
   userId: string | null;
@@ -23,11 +22,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, pass: string) => {
     try {
-      const { data: users, error } = await supabase.from('NhanVien').select('*');
-      
-      if (error) {
-        throw new Error(error.message || 'Lỗi kết nối CSDL');
-      }
+      // Dùng admin token để lấy danh sách nhân viên từ Backend Fastify/MongoDB
+      const adminToken = tokenFor('admin', 'Giám đốc');
+      const response = await danhMucApi.listNhanVien(adminToken);
+      const users = response?.data || [];
 
       const cleanUsername = username.trim().toLowerCase();
       const user = users?.find(u => 
