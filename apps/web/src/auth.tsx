@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const users = response?.data || [];
 
       const cleanUsername = username.trim().toLowerCase();
-      const user = users?.find(u => 
+      const user = users?.find((u: any) => 
         u.ten?.trim().toLowerCase() === cleanUsername || 
         u.id?.trim().toLowerCase() === cleanUsername ||
         (u.tenDangNhap && u.tenDangNhap.trim().toLowerCase() === cleanUsername)

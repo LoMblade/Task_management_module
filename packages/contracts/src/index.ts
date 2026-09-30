@@ -24,12 +24,7 @@ export const nhanVienSchema = z.object({
 });
 export type NhanVien = z.infer<typeof nhanVienSchema>;
 
-export const passwordSchema = z.string()
-  .min(8, 'Mật khẩu phải có ít nhất 8 ký tự')
-  .regex(/[A-Z]/, 'Mật khẩu phải chứa ít nhất 1 chữ hoa')
-  .regex(/[a-z]/, 'Mật khẩu phải chứa ít nhất 1 chữ thường')
-  .regex(/[0-9]/, 'Mật khẩu phải chứa ít nhất 1 chữ số')
-  .regex(/[\W_]/, 'Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt');
+export const passwordSchema = z.string().optional();
 
 export const taoNhanVienSchema = nhanVienSchema.omit({ congTyId: true }).extend({
   id: z.string().optional(),

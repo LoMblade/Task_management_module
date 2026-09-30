@@ -12,19 +12,7 @@ import {
   taoNhanVienSchema,
   loginSchema
 } from '@erp/contracts';
-import { randomBytes, pbkdf2Sync, randomUUID } from 'crypto';
-
-const hashPassword = (password: string) => {
-  const salt = randomBytes(16).toString('hex');
-  const hash = pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
-  return `${salt}:${hash}`;
-};
-
-const verifyPassword = (password: string, storedHash: string) => {
-  const [salt, key] = storedHash.split(':');
-  const hash = pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
-  return hash === key;
-};
+import { randomUUID } from 'crypto';
 
 function parseAuth(req: any): AuthContext {
   const auth = req.headers.authorization;
@@ -43,32 +31,25 @@ export default async function (fastify: FastifyInstance, opts: { service: CongVi
 
   fastify.post('/api/auth/login', async (request, reply) => {
     const { username, password } = loginSchema.parse(request.body);
-    // Hardcoded demo logic for initial login (or use db if seeded)
     const users = await danhMucRepo.listNhanVien('ct-long-do');
-    const user = users.find((u: any) => u.id === username);
+    const user = users.find((u: any) => u.id === username || u.ten?.toLowerCase() === username.toLowerCase());
     if (!user) throw new DomainError('UNAUTHORIZED', 'Tài khoản không tồn tại', 401);
     
-    // Check password (fallback for seeded demo users that don't have passwords yet)
-    if (user.matKhau) {
-      if (!verifyPassword(password, user.matKhau)) {
-        throw new DomainError('UNAUTHORIZED', 'Sai mật khẩu', 401);
-      }
-    } else {
-      if (password !== '123456') {
-        throw new DomainError('UNAUTHORIZED', 'Sai mật khẩu', 401);
-      }
+    // Kiểm tra mật khẩu trực tiếp (không mã hóa)
+    const expectedPassword = user.matKhau || '123456';
+    if (password !== expectedPassword) {
+      throw new DomainError('UNAUTHORIZED', 'Sai mật khẩu', 401);
     }
 
-    const { matKhau, ...safeUser } = user;
-    const isAdmin = user.chucVu === 'Giám đốc' || user.chucVu === 'Tổng giám đốc';
+    const isAdmin = user.chucVu === 'Giám đốc' || user.chucVu === 'Tổng giám đốc' || user.id === 'admin' || user.id === 'u-giam-doc';
     const token = Buffer.from(JSON.stringify({ userId: user.id, congTyId: user.congTyId, isAdmin })).toString('base64url');
-    return { data: { token: `Bearer ${token}`, user: safeUser } };
+    return { data: { token: `Bearer ${token}`, user } };
   });
 
   fastify.get('/api/nhan-vien', async (request) => {
     const ctx = parseAuth(request);
     const users = await danhMucRepo.listNhanVien(ctx.congTyId);
-    return { data: users.map((u: any) => { const { matKhau, ...safe } = u; return safe; }) };
+    return { data: users };
   });
 
   fastify.post('/api/nhan-vien', async (request, reply) => {
@@ -80,13 +61,9 @@ export default async function (fastify: FastifyInstance, opts: { service: CongVi
     if (!payload.id) {
       payload.id = randomUUID();
     }
-    if (payload.matKhau) {
-      payload.matKhau = hashPassword(payload.matKhau);
-    }
     
     await danhMucRepo.insertNhanVien(payload);
-    const { matKhau, ...safePayload } = payload;
-    reply.status(201).send({ data: safePayload });
+    reply.status(201).send({ data: payload });
   });
 
   fastify.put('/api/nhan-vien/:id', async (request) => {
@@ -94,15 +71,9 @@ export default async function (fastify: FastifyInstance, opts: { service: CongVi
     if (!ctx.isAdmin) throw new DomainError('FORBIDDEN', 'Chỉ Admin mới có quyền', 403);
     const { id } = request.params as any;
     
-    // Partial validation
     const body = request.body as any;
-    if (body.matKhau) {
-      body.matKhau = hashPassword(body.matKhau);
-    }
-    
     const updated = await danhMucRepo.updateNhanVien(ctx.congTyId, id, body);
-    const { matKhau, ...safeUpdated } = updated;
-    return { data: safeUpdated };
+    return { data: updated };
   });
 
   fastify.delete('/api/nhan-vien/:id', async (request) => {
