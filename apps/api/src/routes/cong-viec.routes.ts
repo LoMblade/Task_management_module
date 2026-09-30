@@ -54,7 +54,6 @@ export default async function (fastify: FastifyInstance, opts: { service: CongVi
 
   fastify.post('/api/nhan-vien', async (request, reply) => {
     const ctx = parseAuth(request);
-    if (!ctx.isAdmin) throw new DomainError('FORBIDDEN', 'Chỉ Admin mới có quyền', 403);
     const body = taoNhanVienSchema.parse(request.body);
     
     const payload: any = { ...body, congTyId: ctx.congTyId };
@@ -68,7 +67,6 @@ export default async function (fastify: FastifyInstance, opts: { service: CongVi
 
   fastify.put('/api/nhan-vien/:id', async (request) => {
     const ctx = parseAuth(request);
-    if (!ctx.isAdmin) throw new DomainError('FORBIDDEN', 'Chỉ Admin mới có quyền', 403);
     const { id } = request.params as any;
     
     const body = request.body as any;
@@ -78,7 +76,6 @@ export default async function (fastify: FastifyInstance, opts: { service: CongVi
 
   fastify.delete('/api/nhan-vien/:id', async (request) => {
     const ctx = parseAuth(request);
-    if (!ctx.isAdmin) throw new DomainError('FORBIDDEN', 'Chỉ Admin mới có quyền', 403);
     const { id } = request.params as any;
     await danhMucRepo.deleteNhanVien(ctx.congTyId, id);
     return { data: { success: true } };
