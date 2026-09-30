@@ -81,7 +81,10 @@ export function ChiTietPage({ id, mode, onBack }: { id: string, mode: 'view' | '
   const handleSaveProgress = () => {
     if (progressInput === null || progressInput === task.tienDo) return;
     updateMutation.mutate({ id, input: { tienDo: progressInput } }, {
-      onSuccess: () => toast.success('Đã cập nhật tiến độ', `Tiến độ hiện tại: ${progressInput}%`),
+      onSuccess: () => {
+        toast.success('Đã cập nhật tiến độ', `Tiến độ hiện tại: ${progressInput}%`);
+        setProgressInput(null);
+      },
       onError: (err: any) => toast.error('Lỗi cập nhật tiến độ', err.message)
     });
   };
@@ -262,7 +265,7 @@ export function ChiTietPage({ id, mode, onBack }: { id: string, mode: 'view' | '
 
             {isHoanThanh && (
               <span style={{ fontSize: '0.85rem', color: '#059669', fontWeight: '600' }}>
-                ✓ Công việc đã được nghiệm thu hoàn thành. Không thể chỉnh sửa hoặc chuyển trạng thái.
+                ✓ Công việc đã được nghiệm thu hoàn thành.
               </span>
             )}
           </div>

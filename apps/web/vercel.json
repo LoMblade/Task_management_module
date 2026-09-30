@@ -1,7 +1,0 @@
-{
-  "buildCommand": "pnpm --filter @erp/web build",
-  "outputDirectory": "apps/web/dist",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}

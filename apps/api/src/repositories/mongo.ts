@@ -102,12 +102,14 @@ export class MongoCongViecRepository implements CongViecRepository {
 
   async update(congTyId: string, id: string, patch: Partial<CongViec>): Promise<CongViec> {
     await this.col.updateOne({ id, congTyId }, { $set: cleanUndefined(patch) });
-    return this.findById(congTyId, id) as Promise<CongViec>;
+    // Dùng findOne trực tiếp thay vì findById vì findById lọc deletedAt
+    // Khi softDelete set deletedAt, findById sẽ trả null → crash
+    return this.col.findOne({ id, congTyId }) as Promise<CongViec>;
   }
 
   async nextMa(congTyId: string): Promise<string> {
     const counter = await this.db.collection('counters').findOneAndUpdate(
-      { _id: congTyId },
+      { _id: congTyId as any },
       { $inc: { seq: 1 } },
       { upsert: true, returnDocument: 'after' }
     ) as any;
@@ -174,20 +176,24 @@ export class MongoDanhMucRepository implements DanhMucRepository {
   async updateNhanVien(congTyId: string, id: string, patch: Partial<NhanVien>) {
     let filter: any = { congTyId, id };
     try {
-      if (ObjectId.isValid(id)) {
+      if (typeof id === 'string' && id.length === 24 && /^[0-9a-fA-F]{24}$/.test(id)) {
         filter = { congTyId, $or: [{ id }, { _id: new ObjectId(id) }] };
       }
-    } catch {}
+    } catch (e) {
+      console.error("updateNhanVien error:", e);
+    }
     await this.nvCol.updateOne(filter, { $set: cleanUndefined(patch) });
     return this.nvCol.findOne(filter) as Promise<NhanVien>;
   }
   async deleteNhanVien(congTyId: string, id: string) {
     let filter: any = { congTyId, id };
     try {
-      if (ObjectId.isValid(id)) {
+      if (typeof id === 'string' && id.length === 24 && /^[0-9a-fA-F]{24}$/.test(id)) {
         filter = { congTyId, $or: [{ id }, { _id: new ObjectId(id) }] };
       }
-    } catch {}
+    } catch (e) {
+      console.error("deleteNhanVien error:", e);
+    }
     await this.nvCol.deleteOne(filter);
   }
   async listDuAn(congTyId: string) { return this.daCol.find({ congTyId }).toArray(); }

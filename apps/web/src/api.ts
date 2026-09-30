@@ -10,11 +10,18 @@ async function request<T>(
   token: string,
   options?: RequestInit
 ): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (options?.body) {
+    headers['Content-Type'] = 'application/json';
+  }
+  if (token) {
+    headers['Authorization'] = token;
+  }
+
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
-      Authorization: token,
+      ...headers,
       ...options?.headers,
     },
   });

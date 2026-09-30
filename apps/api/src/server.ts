@@ -72,12 +72,24 @@ async function start() {
   fastify.get('/health', async () => ({ status: 'ok' }));
 
   fastify.setErrorHandler((error, request, reply) => {
-    fastify.log.error(error);
-    if (error instanceof DomainError) {
-      reply.status(error.status).send({ error: { code: error.code, message: error.message } });
-    } else if (error instanceof ZodError || error.name === 'ZodError') {
-      const zodError = error as ZodError;
-      const messages = zodError.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ');
+    const err = error as any;
+    console.error('[ERROR_HANDLER]', {
+      name: err?.name,
+      code: err?.code,
+      message: err?.message,
+      status: err?.status,
+      isDomainError: err instanceof DomainError,
+      nameCheck: err?.name === 'DomainError',
+      constructor: err?.constructor?.name,
+      stack: err?.stack?.split('\n').slice(0, 3).join('\n')
+    });
+    if (err instanceof DomainError || err?.name === 'DomainError') {
+      const code = err.code || 'BAD_REQUEST';
+      const status = err.status || 400;
+      reply.status(status).send({ error: { code, message: err.message } });
+    } else if (err instanceof ZodError || err?.name === 'ZodError') {
+      const zodError = err as ZodError;
+      const messages = zodError.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join('; ');
       reply.status(400).send({ error: { code: 'VALIDATION_ERROR', message: messages } });
     } else {
       reply.status(500).send({ error: { code: 'INTERNAL_SERVER_ERROR', message: 'Lỗi hệ thống' } });

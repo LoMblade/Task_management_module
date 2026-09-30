@@ -33,3 +33,15 @@ Trước khi kết thúc phiên làm việc hoặc báo hoàn thành task, BẠN
 1. Kiểm tra lỗi cú pháp (Typescript): `pnpm typecheck`
 2. Chạy test logic: `pnpm test`
 Đảm bảo cả 2 lệnh Pass 100% mới được báo cáo kết quả.
+
+## NHẬT KÝ LÀM VIỆC VỚI AI
+- **Ngày 30/09/2026**: Khởi tạo dự án, thiết lập workspace pnpm. Xây dựng cấu trúc contracts (Zod), backend API (Fastify) và frontend Web (React). Xây dựng đầy đủ phân quyền Công Việc.
+- **Ngày 01/10/2026**: 
+  - Khắc phục lỗi 500 Internal Server Error (do prototype của DomainError bị mất khi dùng tsx hot-reload).
+  - Thêm cột "Dự án" vào màn hình danh sách (DanhSachPage / TaskTable).
+  - Thêm hiển thị số lượng (count) vào các tab lọc nhanh trên giao diện danh sách.
+  - Xử lý UX thông báo lỗi khi thực hiện hành động (VD: Xóa) bằng Toast thay vì nuốt lỗi.
+  - Review lại toàn bộ logic phân quyền: Trạng thái, Quyền xem (checkVisibility), Quyền xóa (chỉ Người giao/Admin).
+  - Khắc phục lỗi 500 khi xóa do Fastify strict (FST_ERR_CTP_EMPTY_JSON_BODY) khi gửi Content-Type application/json với empty body.
+  - Sửa lỗi 500 do MongoCongViecRepository.update gọi findById bị lặp filter deletedAt.
+  - Fix lỗi cập nhật tiến độ (thanh trượt): Bổ sung 	ienDo vào Zod schema (taoCongViecBaseSchema) để backend không tự động strip payload gửi lên.

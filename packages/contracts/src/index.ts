@@ -113,6 +113,7 @@ const taoCongViecBaseSchema = z.object({
   uuTien: uuTienSchema.optional().default('BINH_THUONG'),
   batDau: ngaySchema.optional(),
   hetHan: ngaySchema.optional(),
+  tienDo: z.number().min(0).max(100).optional(),
 });
 
 export const taoCongViecSchema = taoCongViecBaseSchema.superRefine((data, ctx) => {

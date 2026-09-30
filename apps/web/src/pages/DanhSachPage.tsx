@@ -50,16 +50,19 @@ export function DanhSachPage({ onOpenDetail }: { onOpenDetail: (id: string, mode
 
       {/* Tabs - Slim */}
       <div className="tabs" style={{ marginBottom: '0.5rem' }}>
-        {['CUA_TOI', 'TOI_GIAO', 'THEO_DOI', 'TAT_CA'].map(scope => (
+        {[
+          { id: 'CUA_TOI', label: 'Việc của tôi', countKey: 'cuaToi' },
+          { id: 'TOI_GIAO', label: 'Việc tôi giao', countKey: 'toiGiao' },
+          { id: 'THEO_DOI', label: 'Đang theo dõi', countKey: 'theoDoi' },
+          { id: 'TAT_CA', label: 'Tất cả', countKey: 'tatCa' }
+        ].map(scope => (
           <div 
-            key={scope} 
-            className={`tab ${filters.scope === scope ? 'active' : ''}`}
-            onClick={() => handleTabClick(scope)}
+            key={scope.id} 
+            className={`tab ${filters.scope === scope.id ? 'active' : ''}`}
+            onClick={() => handleTabClick(scope.id)}
             style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}
           >
-            {scope === 'CUA_TOI' ? 'Việc của tôi' :
-             scope === 'TOI_GIAO' ? 'Việc tôi giao' :
-             scope === 'THEO_DOI' ? 'Đang theo dõi' : 'Tất cả'}
+            {scope.label} {data?.counts ? `(${data.counts[scope.countKey]})` : ''}
           </div>
         ))}
       </div>
