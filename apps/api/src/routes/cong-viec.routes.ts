@@ -12,7 +12,7 @@ import {
   taoNhanVienSchema,
   loginSchema
 } from '@erp/contracts';
-import { randomBytes, pbkdf2Sync } from 'crypto';
+import { randomBytes, pbkdf2Sync, randomUUID } from 'crypto';
 
 const hashPassword = (password: string) => {
   const salt = randomBytes(16).toString('hex');
@@ -77,6 +77,9 @@ export default async function (fastify: FastifyInstance, opts: { service: CongVi
     const body = taoNhanVienSchema.parse(request.body);
     
     const payload: any = { ...body, congTyId: ctx.congTyId };
+    if (!payload.id) {
+      payload.id = randomUUID();
+    }
     if (payload.matKhau) {
       payload.matKhau = hashPassword(payload.matKhau);
     }
