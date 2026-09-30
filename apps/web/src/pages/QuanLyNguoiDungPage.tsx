@@ -50,7 +50,8 @@ export function QuanLyNguoiDungPage() {
 
   const handleSubmit = (data: any) => {
     if (editingUser) {
-      updateMutation.mutate({ id: editingUser.id, input: data }, { 
+      const targetId = editingUser.id || editingUser._id;
+      updateMutation.mutate({ id: targetId, input: data }, { 
         onSuccess: () => { 
           closeForm(); 
           toast.success('Cập nhật nhân viên thành công'); 
@@ -107,7 +108,7 @@ export function QuanLyNguoiDungPage() {
             Quản lý Nhân sự & Người dùng
           </h2>
           <p style={{ margin: '2px 0 0 0', fontSize: '0.825rem', color: '#64748b' }}>
-            Danh sách nhân sự, phân quyền điều hành trong hệ thống ERP Long Đỗ
+            Danh sách nhân sự, phân quyền điều hành
           </p>
         </div>
 
@@ -256,7 +257,7 @@ export function QuanLyNguoiDungPage() {
                             border: 'none',
                             cursor: 'pointer'
                           }}
-                          onClick={() => handleDelete(u.id, u.ten)}
+                          onClick={() => handleDelete(u.id || u._id, u.ten)}
                         >
                           🗑️
                         </button>
@@ -318,15 +319,6 @@ function UserForm({ user, onClose, onSubmit }: { user: any; onClose: () => void;
     if (!user) {
       if (!formData.matKhau) {
         setError('Vui lòng thiết lập mật khẩu ban đầu cho nhân viên');
-        return;
-      }
-      if (formData.matKhau.length < 6) {
-        setError('Mật khẩu phải có ít nhất 6 ký tự');
-        return;
-      }
-    } else {
-      if (formData.matKhau && formData.matKhau.length < 6) {
-        setError('Mật khẩu mới phải có ít nhất 6 ký tự');
         return;
       }
     }

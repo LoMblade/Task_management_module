@@ -1,4 +1,4 @@
-import { Collection, Db, Filter } from 'mongodb';
+import { Collection, Db, Filter, ObjectId } from 'mongodb';
 import { CongViec, LichSuThayDoi, ViecCon, BinhLuan, NhanVien, DuAn } from '@erp/contracts';
 import { CongViecRepository, CongViecFilter, ScopeCounts, LichSuRepository, ViecConRepository, BinhLuanRepository, DanhMucRepository } from '../domain';
 
@@ -172,10 +172,24 @@ export class MongoDanhMucRepository implements DanhMucRepository {
   async listNhanVien(congTyId: string) { return this.nvCol.find({ congTyId }).toArray(); }
   async insertNhanVien(item: NhanVien) { await this.nvCol.insertOne(cleanUndefined(item) as any); }
   async updateNhanVien(congTyId: string, id: string, patch: Partial<NhanVien>) {
-    await this.nvCol.updateOne({ id, congTyId }, { $set: cleanUndefined(patch) });
-    return this.nvCol.findOne({ id, congTyId }) as Promise<NhanVien>;
+    let filter: any = { congTyId, id };
+    try {
+      if (ObjectId.isValid(id)) {
+        filter = { congTyId, $or: [{ id }, { _id: new ObjectId(id) }] };
+      }
+    } catch {}
+    await this.nvCol.updateOne(filter, { $set: cleanUndefined(patch) });
+    return this.nvCol.findOne(filter) as Promise<NhanVien>;
   }
-  async deleteNhanVien(congTyId: string, id: string) { await this.nvCol.deleteOne({ id, congTyId }); }
+  async deleteNhanVien(congTyId: string, id: string) {
+    let filter: any = { congTyId, id };
+    try {
+      if (ObjectId.isValid(id)) {
+        filter = { congTyId, $or: [{ id }, { _id: new ObjectId(id) }] };
+      }
+    } catch {}
+    await this.nvCol.deleteOne(filter);
+  }
   async listDuAn(congTyId: string) { return this.daCol.find({ congTyId }).toArray(); }
   async insertDuAn(item: DuAn) { await this.daCol.insertOne(cleanUndefined(item) as any); }
 }
