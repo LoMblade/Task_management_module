@@ -25,7 +25,11 @@ import { ZodError } from 'zod';
 const fastify = Fastify({ logger: true });
 
 async function start() {
-  await fastify.register(cors);
+  await fastify.register(cors, {
+    origin: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
 
   let congViecRepo, lichSuRepo, viecConRepo, binhLuanRepo, danhMucRepo;
 
