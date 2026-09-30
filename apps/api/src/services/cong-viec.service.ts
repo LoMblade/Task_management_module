@@ -21,6 +21,7 @@ export class CongViecService {
 
   private checkVisibility(ctx: AuthContext, task: CongViec) {
     if (task.congTyId !== ctx.congTyId) throw new DomainError('NOT_FOUND', 'Không tìm thấy công việc', 404);
+    if (ctx.isAdmin) return;
     if (task.nguoiGiaoId !== ctx.userId && !task.nguoiThucHienIds.includes(ctx.userId) && !task.nguoiTheoDoiIds?.includes(ctx.userId)) {
       throw new DomainError('NOT_FOUND', 'Không tìm thấy công việc', 404);
     }
@@ -84,7 +85,7 @@ export class CongViecService {
 
   async update(ctx: AuthContext, id: string, input: any) {
     const task = await this.get(ctx, id);
-    const isGiao = task.nguoiGiaoId === ctx.userId;
+    const isGiao = task.nguoiGiaoId === ctx.userId || Boolean(ctx.isAdmin);
     const isThucHien = task.nguoiThucHienIds.includes(ctx.userId);
 
     if (!isGiao && !isThucHien) {
@@ -125,7 +126,7 @@ export class CongViecService {
 
   async softDelete(ctx: AuthContext, id: string) {
     const task = await this.get(ctx, id);
-    const isGiao = task.nguoiGiaoId === ctx.userId;
+    const isGiao = task.nguoiGiaoId === ctx.userId || Boolean(ctx.isAdmin);
     if (!isGiao) throw new DomainError('FORBIDDEN', 'Chỉ người giao được xóa');
     if (task.trangThai === 'HOAN_THANH') throw new DomainError('INVALID_STATE', 'Không thể xóa công việc đã hoàn thành');
     
@@ -136,7 +137,7 @@ export class CongViecService {
     const task = await this.get(ctx, id);
     if (task.trangThai === 'HOAN_THANH') throw new DomainError('INVALID_STATE', 'Công việc đã hoàn thành');
 
-    const isGiao = task.nguoiGiaoId === ctx.userId;
+    const isGiao = task.nguoiGiaoId === ctx.userId || Boolean(ctx.isAdmin);
     const isThucHien = task.nguoiThucHienIds.includes(ctx.userId);
 
     const from = task.trangThai;

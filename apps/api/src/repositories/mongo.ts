@@ -30,13 +30,14 @@ export class MongoCongViecRepository implements CongViecRepository {
   private buildVisibilityFilter(filter: CongViecFilter): Filter<CongViec> {
     const base: Filter<CongViec> = { congTyId: filter.congTyId, deletedAt: { $exists: false } };
     
-    // Đề bài không cho phép Admin vượt quyền truy cập công việc của người khác
-    // Chỉ những người có liên quan (Giao, Thực hiện, Theo dõi) mới được thấy.
-    base.$or = [
-      { nguoiGiaoId: filter.userId },
-      { nguoiThucHienIds: filter.userId },
-      { nguoiTheoDoiIds: filter.userId }
-    ];
+    // Nếu là Giám đốc / Admin thì có quyền xem toàn bộ công việc trong công ty
+    if (!filter.isAdmin) {
+      base.$or = [
+        { nguoiGiaoId: filter.userId },
+        { nguoiThucHienIds: filter.userId },
+        { nguoiTheoDoiIds: filter.userId }
+      ];
+    }
     
     return base;
   }

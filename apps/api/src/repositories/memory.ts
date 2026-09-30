@@ -8,7 +8,7 @@ export class MemoryCongViecRepository implements CongViecRepository {
     const { congTyId, userId, isAdmin, today, page, limit, scope, duAnId, trangThai, uuTien, q, quaHan, sort } = filter;
     
     const visibleTasks = this.items.filter(t => t.congTyId === congTyId && !t.deletedAt && 
-      (t.nguoiGiaoId === userId || t.nguoiThucHienIds?.includes(userId) || t.nguoiTheoDoiIds?.includes(userId)));
+      (isAdmin || t.nguoiGiaoId === userId || t.nguoiThucHienIds?.includes(userId) || t.nguoiTheoDoiIds?.includes(userId)));
 
     const counts: ScopeCounts = { cuaToi: 0, toiGiao: 0, theoDoi: 0, tatCa: 0 };
     visibleTasks.forEach(t => {

@@ -1,5 +1,5 @@
 export function tokenFor(userId: string, chucVu?: string): string {
-  const isAdmin = chucVu === 'Giám đốc' || chucVu === 'Tổng giám đốc';
+  const isAdmin = chucVu === 'Giám đốc' || chucVu === 'Tổng giám đốc' || userId === 'admin' || userId === 'u-giam-doc';
   return `Bearer ${btoa(JSON.stringify({ userId, congTyId: 'ct-long-do', isAdmin }))}`;
 }
 
