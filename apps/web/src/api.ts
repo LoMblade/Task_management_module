@@ -231,12 +231,19 @@ export const danhMucApi = {
     return { data: data || [] };
   },
   createNhanVien: async (token: string, input: any) => {
-    const { data, error } = await supabase.from('NhanVien').insert([input]).select().single();
+    const payload = {
+      ...input,
+      id: input.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined),
+      congTyId: input.congTyId || 'ct-long-do'
+    };
+    if (!payload.id) delete payload.id;
+    const { data, error } = await supabase.from('NhanVien').insert([payload]).select().single();
     if (error) throw error;
     return { data };
   },
   updateNhanVien: async (token: string, id: string, input: any) => {
-    const { data, error } = await supabase.from('NhanVien').update(input).eq('id', id).select().single();
+    const { id: _, ...safeInput } = input;
+    const { data, error } = await supabase.from('NhanVien').update(safeInput).eq('id', id).select().single();
     if (error) throw error;
     return { data };
   },

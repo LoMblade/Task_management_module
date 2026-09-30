@@ -16,10 +16,10 @@ export const ngaySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Đ
 
 // 2. NhanVien
 export const nhanVienSchema = z.object({
-  id: z.string().min(1, { message: 'User ID là bắt buộc' }),
+  id: z.string().optional(),
   ten: z.string().min(1, { message: 'Tên nhân viên là bắt buộc' }),
   chucVu: z.string(),
-  congTyId: z.string(),
+  congTyId: z.string().optional(),
   matKhau: z.string().optional(),
 });
 export type NhanVien = z.infer<typeof nhanVienSchema>;
@@ -32,6 +32,7 @@ export const passwordSchema = z.string()
   .regex(/[\W_]/, 'Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt');
 
 export const taoNhanVienSchema = nhanVienSchema.omit({ congTyId: true }).extend({
+  id: z.string().optional(),
   matKhau: passwordSchema,
 });
 

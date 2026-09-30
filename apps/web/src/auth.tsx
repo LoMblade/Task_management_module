@@ -29,10 +29,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(error.message || 'Lỗi kết nối CSDL');
       }
 
-      const user = users?.find(u => u.id === username || u.ten === username);
+      const cleanUsername = username.trim().toLowerCase();
+      const user = users?.find(u => 
+        u.ten?.trim().toLowerCase() === cleanUsername || 
+        u.id?.trim().toLowerCase() === cleanUsername ||
+        (u.tenDangNhap && u.tenDangNhap.trim().toLowerCase() === cleanUsername)
+      );
       
       if (!user) {
-        throw new Error('Tài khoản không tồn tại');
+        throw new Error('Tài khoản không tồn tại trên hệ thống');
       }
 
       // Kiểm tra mật khẩu (demo fallback)
