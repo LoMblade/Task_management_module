@@ -67,19 +67,20 @@ async function start() {
 
   fastify.get('/health', async () => ({ status: 'ok' }));
 
-  await fastify.register(congViecRoutes, { service, danhMucRepo });
-
   fastify.setErrorHandler((error, request, reply) => {
     fastify.log.error(error);
     if (error instanceof DomainError) {
       reply.status(error.status).send({ error: { code: error.code, message: error.message } });
-    } else if (error instanceof ZodError) {
-      const messages = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ');
+    } else if (error instanceof ZodError || error.name === 'ZodError') {
+      const zodError = error as ZodError;
+      const messages = zodError.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ');
       reply.status(400).send({ error: { code: 'VALIDATION_ERROR', message: messages } });
     } else {
       reply.status(500).send({ error: { code: 'INTERNAL_SERVER_ERROR', message: 'Lỗi hệ thống' } });
     }
   });
+
+  await fastify.register(congViecRoutes, { service, danhMucRepo });
 
   const port = Number(process.env.PORT || 3000);
   await fastify.listen({ port, host: '0.0.0.0' });
